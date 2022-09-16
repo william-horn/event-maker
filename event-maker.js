@@ -201,6 +201,8 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
     _connectionPriorityOrder: _cpo,
     _pausePriority,
     _resolvers,
+    _parentEvent,
+    _childEvents,
     settings: eventSettings,
     stats
   } = event;
@@ -221,7 +223,7 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
   // SELF DISPATCH TYPE
   const runEventHandlers = () => {
-    if (!headers.ghost) {
+    if (headers.enableSelf) {
       for (let i = _cpo.length - 1; i > _pausePriority; i--) {
         const connectionRow = _connectionPriorities[_cpo[i]];
         const connectionList = connectionRow.connections;
@@ -246,13 +248,12 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
   // LINKED DISPATCH TYPE
   const runLinkedEventHandlers = () => {
-    if (linkedEvents.length > 0 && !headers.ignoreLinkedEvents) {
+    if (linkedEvents.length > 0 && headers.enableLinked) {
       for (let i = 0; i < linkedEvents.length; i++) {
         const linkedEvent = linkedEvents[i];
 
         if (eventBlacklist[linkedEvent._id]) {
-          console.log('Cyclic linked events');
-          return;
+          throw 'Detected cyclic linked events';
         }
 
         eventBlacklist[linkedEvent._id] = true;
@@ -268,11 +269,32 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   }
 
   const runDescendantEventHandlers = () => {
-    // console.log('ran descendant events');
+    if (headers.enableDescending) {
+      for (let i = 0; i < _childEvents.length; i++) {
+        const childEvent = _childEvents[i];
+
+        globalContext._dispatchEvent({
+          event: childEvent,
+          args,
+          headers: {
+            enableDescending: true,
+            enableAscending: false,
+          }
+        });
+      }
+    }
   }
 
   const runAscendantEventHandlers = () => {
-    // console.log('ran ascendant events');
+    if (globalContext.headers.enableAscending && _parentEvent && event._propagating) {
+      globalContext._dispatchEvent({
+        event: _parentEvent,
+        args,
+        headers: {
+          enableDescending: false,
+        }
+      });
+    }
   }
 
   const dispatchSequence = [
@@ -283,7 +305,7 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   ]
 
   for (let i = 0; i < dispatchOrder.length; i++) {
-    dispatchSequence[i]();
+    dispatchSequence[dispatchOrder[i]]();
   }
 }
 
@@ -783,8 +805,10 @@ const Event = (parentEvent, settings) => {
         DispatchOrder.AscendantEvents
       ],
 
-      bubbling: false,
-      ghost: false,
+      enableDescending: false,
+      enableLinked: true,
+      enableAscending: false,
+      enableSelf: true,
 
       // custom event settings
       ...settings
