@@ -187,7 +187,8 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   const DispatchStatus = EventEnums.DispatchStatus;
 
   const {
-    eventBlacklist
+    eventBlacklist,
+    headers: globalHeaders
   } = globalContext;
 
   const {
@@ -269,30 +270,23 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   }
 
   const runDescendantEventHandlers = () => {
-    if (headers.enableDescending) {
+    if (globalHeaders.enableDescending) {
       for (let i = 0; i < _childEvents.length; i++) {
         const childEvent = _childEvents[i];
 
         globalContext._dispatchEvent({
           event: childEvent,
-          args,
-          headers: {
-            enableDescending: true,
-            enableAscending: false,
-          }
+          args
         });
       }
     }
   }
 
   const runAscendantEventHandlers = () => {
-    if (globalContext.headers.enableAscending && _parentEvent && event._propagating) {
+    if (globalHeaders.enableAscending && _parentEvent && event._propagating) {
       globalContext._dispatchEvent({
         event: _parentEvent,
-        args,
-        headers: {
-          enableDescending: false,
-        }
+        args
       });
     }
   }
@@ -325,6 +319,10 @@ const dispatchEvent = function(payload) {
         rejected: [onDispatchRejected]
       });
     }
+  }
+
+  if (payload.headers.enableAscending && payload.headers.enableDescending) {
+    throw 'Cannot use two mutually exclusive headers (enableAscending and enableDescending)';
   }
 
   globalContext._dispatchEvent(payload);
@@ -463,27 +461,13 @@ const fire = function(...args) {
   to avoid an infinite event loop
 */
 const fireAll = function(...args) {
-  // recursiveDispatch({
-  //   headers: {
-  //     deferBubbling: true
-  //   },
-  //   dispatchPayload: {
-  //     event: this,
-  //     caller: this,
-  //   }
-  // }, ...args);
-
-  // dispatchEvent({
-  //   event: thing,
-  //   headers: {
-  //     recursive: true,
-  //     deferBubbling: true
-  //   },
-  //   extensions: {
-  //     bubbling: false,
-  //     ghost: false
-  //   },
-  // });
+  dispatchEvent({
+    event: this,
+    args: [...args],
+    headers: {
+      enableDescending: true,
+    }
+  });
 }
 
 /*
