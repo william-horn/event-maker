@@ -34,17 +34,12 @@ const c = event.connect({
 //   handler: f
 // });
 
-event2.connect({ handler: () => console.log('conn 2') });
+event2.connect({ name: 'jeff', handler: () => console.log('conn 2') });
 parent.connect({ name: 'bob', handler: () => console.log('parent fires') });
 
 // parent.disconnect({ name: 'bob' });
 parent.disableAll();
-parent.enableAll();
-parent.fire();
-event2.disableAll();
-event2.enableAll();
-event.fire();
-
+event2.fire();
 
 /*
   dispatchEvent({

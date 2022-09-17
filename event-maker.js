@@ -70,10 +70,18 @@ const isConnectionType = connection => {
     && connection._customType === EventEnums.InstanceType.EventConnection;
 }
 
-const recurseSelf = (list, methodName, ...args) => {
-  for (let i = 0; i < list.length; i++) {
-    list[i][methodName](...args);
+const recurseChildEvents = (event, callback) => {
+
+  const recurse = event => {
+    callback(event);
+
+    const childEvents = event._childEvents;
+    for (let i = 0; i < childEvents.length; i++) {
+      recurse(childEvents[i]);
+    }
   }
+
+  recurse(event);
 }
 
 const collapseWaitingPromises = options => {
@@ -481,8 +489,7 @@ const disconnect = function(options) {
   @returns <void>
 */
 const disconnectAll = function(options) {
-  this.disconnect(options);
-  recurseSelf(this._childEvents, 'disconnectAll', options);
+  recurseChildEvents(this, event => event.disconnect(options));
 }
 
 const wait = function(timeout) {
@@ -506,8 +513,7 @@ const pause = function(options) {
 }
 
 const pauseAll = function(options) {
-  this.pause(options);
-  recurseSelf(this._childEvents, 'pauseAll', options);
+  recurseChildEvents(this, event => event.pause(options));
 }
 
 
@@ -558,16 +564,7 @@ const disableAll = function() {
   this._prevState = this._state;
   this._state = EventEnums.StateType.DisabledAll;
 
-  const _disableAll = (event) => {
-    event._disables++;
-    const childEvents = event._childEvents;
-
-    for (let i = 0; i < childEvents.length; i++) {
-      _disableAll(childEvents[i]);
-    }
-  }
-
-  _disableAll(this);
+  recurseChildEvents(this, event => event._disables++);
 }
 
 const enable = function() {
@@ -587,16 +584,7 @@ const enableAll = function() {
 
   this._state = EventEnums.StateType._prevState;
 
-  const _enableAll = (event) => {
-    event._disables--;
-    const childEvents = event._childEvents;
-
-    for (let i = 0; i < childEvents.length; i++) {
-      _enableAll(childEvents[i]);
-    }
-  }
-
-  _enableAll(this);
+  recurseChildEvents(this, event => event._disables--);
 }
 
 const isListening = function() {
