@@ -1,0 +1,32 @@
+{
+  "name": "event-maker",
+  "version": "1.0.1",
+  "description": "A portable API for writing connected event-driven code",
+  "main": "event-maker.js",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/william-horn/event-maker.git"
+  },
+  "keywords": [
+    "event",
+    "custom-event",
+    "event-driven",
+    "input",
+    "event-sequence"
+  ],
+  "author": "William J. Horn",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/william-horn/event-maker/issues"
+  },
+  "homepage": "https://github.com/william-horn/event-maker#readme",
+  "dependencies": {
+    "uuid": "^9.0.0"
+  }
+}
