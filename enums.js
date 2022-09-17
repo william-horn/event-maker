@@ -10,7 +10,8 @@ EventEnums.ConnectionPriority = {
 EventEnums.StateType = {
   Listening: 'Listening',
   Paused: 'Paused',
-  Disabled: 'Disabled'
+  Disabled: 'Disabled',
+  DisabledAll: 'DisabledAll',
 }
 
 EventEnums.InstanceType = {
@@ -20,6 +21,7 @@ EventEnums.InstanceType = {
 
 EventEnums.DispatchStatus = {
   Disabled: 'Disabled',
+  DisabledByAncestor: 'DisabledByAncestor',
   Ghost: 'Ghost',
   NoConnection: 'NoConnection',
   PriorityPaused: 'PriorityPaused',

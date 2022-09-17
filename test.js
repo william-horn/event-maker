@@ -1,5 +1,5 @@
 
-const {modelArgs, modelArgs_beta, objectValuesAreUndefined, objectMeetsCriteria} = require('./lib');
+const {modelArgs, objectValuesAreUndefined, objectMeetsCriteria} = require('./lib');
 const inspect = require('util').inspect;
 const { Event, EventEnums, dispatchEvent } = require('./event-maker');
 
@@ -18,9 +18,9 @@ const { Event, EventEnums, dispatchEvent } = require('./event-maker');
 // console.log(meets);
 
 
-const parent = Event({ dispatchLimit: 3 });
+const parent = Event();
 const event2 = Event(parent);
-const event = Event(event2, { enableAscending: true });
+const event = Event(event2);
 
 const f = () => console.log('connection 1')
 
@@ -29,19 +29,23 @@ const c = event.connect({
   handler: f
 });
 
-event.connect({
-  name: 'lol1',
-  handler: f
-});
+// event.connect({
+//   name: 'lol1',
+//   handler: f
+// });
 
 event2.connect({ handler: () => console.log('conn 2') });
 parent.connect({ name: 'bob', handler: () => console.log('parent fires') });
 
 // parent.disconnect({ name: 'bob' });
+parent.disableAll();
+parent.enableAll();
 parent.fire();
-parent.fire();
-parent.fire();
-parent.fire();
+event2.disableAll();
+event2.enableAll();
+event.fire();
+
+
 /*
   dispatchEvent({
     event: EventInstance,

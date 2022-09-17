@@ -54,12 +54,12 @@ todo: add error handling and centralize error messages
   Helper functions
 */
 const {
-  modelArgs_beta,
+  modelArgs,
   objectMeetsCriteria,
   toUpperCamelCase,
   objectHasNoKeys,
   objectValuesAreUndefined,
-  getSubsetOfObject
+  getObjectSubset
 } = require('./lib');
 
 const { v4: uuidv4 } = require('uuid');
@@ -501,15 +501,13 @@ const wait = function(timeout) {
 }
 
 
-const pause = function(name, handler) {
-  return this.pauseWithPriority(0, 
-    name ? { name, handler } : undefined
-  );
+const pause = function(options) {
+
 }
 
-const pauseAll = function(...args) {
-  this.pause(...args);
-  recurseSelf(this._childEvents, 'pauseAll', ...args);
+const pauseAll = function(options) {
+  this.pause(options);
+  recurseSelf(this._childEvents, 'pauseAll', options);
 }
 
 
@@ -521,8 +519,84 @@ const resumeAll = function() {
 
 }
 
+const isDisabledAll = function() {
+  return this._state === EventEnums.StateType.DisabledAll;
+}
+
+const isDisabledOne = function() {
+  return this._state === EventEnums.StateType.Disabled;
+}
+
 const isEnabled = function() {
-  return this._state !== EventEnums.StateType.Disabled;
+  return !this.isDisabledOne() && !this.isDisabledAll();
+}
+
+const isDisabled = function() {
+  return this.isDisabledOne() || this.isDisabledAll();
+}
+
+const getState = function() {
+  return this._state;
+}
+
+const disable = function() {
+  if (this.isDisabled()) {
+    console.log(`Cannot disable event in state: '${this.getState()}' (event must be enabled first)`);
+    return;
+  }
+
+  this._prevState = this._state;
+  this._state = EventEnums.StateType.Disabled;
+}
+
+const disableAll = function() {
+  if (this.isDisabled()) {
+    console.log(`Cannot disable event in state: '${this.getState()}' (event must be enabled first)`);
+    return;
+  }
+
+  this._prevState = this._state;
+  this._state = EventEnums.StateType.DisabledAll;
+
+  const _disableAll = (event) => {
+    event._disables++;
+    const childEvents = event._childEvents;
+
+    for (let i = 0; i < childEvents.length; i++) {
+      _disableAll(childEvents[i]);
+    }
+  }
+
+  _disableAll(this);
+}
+
+const enable = function() {
+  if (!this.isDisabledOne()) {
+    console.log(`Cannot do 'enable' in state: '${this.getState()}'`);
+    return;
+  }
+
+  this._state = EventEnums.StateType._prevState;
+}
+
+const enableAll = function() {
+  if (!this.isDisabledAll()) {
+    console.log(`Cannot do 'enableAll' in state: '${this.getState()}'`);
+    return;
+  }
+
+  this._state = EventEnums.StateType._prevState;
+
+  const _enableAll = (event) => {
+    event._disables--;
+    const childEvents = event._childEvents;
+
+    for (let i = 0; i < childEvents.length; i++) {
+      _enableAll(childEvents[i]);
+    }
+  }
+
+  _enableAll(this);
 }
 
 const isListening = function() {
@@ -567,8 +641,13 @@ const validateNextDispatch = function(caseHandler = {}) {
   const DispatchStatus = EventEnums.DispatchStatus;
 
   // event has been disabled
-  if (!this.isEnabled()) {
+  if (this.isDisabled()) {
     sendStatus('rejected', DispatchStatus.Disabled);
+    return false;
+  }
+
+  if (this._disables > 0) {
+    sendStatus('rejected', DispatchStatus.DisabledByAncestor);
     return false;
   }
 
@@ -623,7 +702,7 @@ const validateNextDispatch = function(caseHandler = {}) {
 const Event = (parentEvent, settings) => {
   const DispatchOrder = EventEnums.DispatchOrder;
 
-  [parentEvent, settings] = modelArgs_beta([
+  [parentEvent, settings] = modelArgs([
     { rule: [parentEvent, EventEnums.InstanceType.EventInstance] },
     { rule: [settings, 'object'], default: {} }
   ]);
@@ -646,9 +725,11 @@ const Event = (parentEvent, settings) => {
     _childEvents: [],
     _resolvers: [],
     _propagating: false,
+    _disables: 0,
 
     _pausePriority: -1,
-    _state: EventEnums.StateType.Listening, // listening | paused:priority_1 | disabled
+    _prevState: EventEnums.StateType.Listening,
+    _state: EventEnums.StateType.Listening, // Listening, Paused, Disabled, DisabledAll
 
     stats: {
       timeLastDispatched: 0,
@@ -696,10 +777,18 @@ const Event = (parentEvent, settings) => {
     validateNextDispatch,
     wait,
     isEnabled,
+    isDisabled,
     isListening,
     disableConnections,
     enableConnections,
-    stopPropagating
+    disableAll,
+    enableAll,
+    isDisabledOne,
+    isDisabledAll,
+    getState,
+    stopPropagating,
+    enable,
+    disable,
   }
 
   // add the new event instance to the parent event's child-event list
