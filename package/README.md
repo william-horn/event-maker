@@ -5,11 +5,11 @@ The `pseudo-events` package was developed by [William J. Horn](https://github.co
 
 With `pseudo-events` you can link events together, create event chains, and create event hierarchies with an intuitive API. No matter how you structure an event system, you always have access to the same features:
 
-* Event priority control
-* Event dispatch order
-* Filtering out event connections
-* Recursive event toggling
-* Event sequences
+* **Event priority control**
+* **Event dispatch order**
+* **Filtering out event connections**
+* **Recursive event toggling**
+* **Event sequences**
 * etc
 
 
@@ -163,7 +163,7 @@ event.fire('hello', 'there', 'world!');
 
 As mentioned before, you can create as many connections to an event instance as you like. They will all be fired once the dispatcher is called.
 
-Example:
+**Example:**
 
 ```js
 event.connect({ handler: () => console.log('event connection #1') });

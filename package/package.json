@@ -2,7 +2,7 @@
   "name": "pseudo-events",
   "version": "1.0.1",
   "description": "A portable API for writing connected event-driven code",
-  "main": "event-maker.js",
+  "main": "src/pseudo-events.js",
   "directories": {
     "lib": "lib"
   },
