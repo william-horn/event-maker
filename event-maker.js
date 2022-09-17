@@ -371,7 +371,7 @@ const connect = function(options = {}) {
   */
   let connectionRow = _connectionPriorities[priority];
   let connectionList;
-  const connection = Connection(options);
+  const connection = new Connection(options);
 
   // self reference for filtering
   connection.connectionInstance = connection;
@@ -727,7 +727,7 @@ const validateNextDispatch = function(caseHandler = {}) {
 
   @returns event<EventInstance>
 */
-const Event = (parentEvent, settings) => {
+const Event = function(parentEvent, settings) {
   const DispatchOrder = EventEnums.DispatchOrder;
 
   [parentEvent, settings] = modelArgs([
@@ -735,101 +735,88 @@ const Event = (parentEvent, settings) => {
     { rule: [settings, 'object'], default: {} }
   ]);
 
-  const event = {
-    /* 
-      _connectionPriorityOrder: [0, 3, 5]
-      _connectionPriorities: { 
-        ['5']: {orderIndex: 2, connections: []},
-        ['0']: {orderIndex: 0, connections: []},
-        ['3']: {orderIndex: 1, connections: []},
-      }
+  this._id = uuidv4();
+  this._customType = EventEnums.InstanceType.EventInstance;
+  this._parentEvent = parentEvent;
+  this._connectionPriorityOrder = [];
+  this._connectionPriorities = {};
+  this._childEvents = [];
+  this._resolvers = [];
+  this._propagating = false;
+  this._disables = 0;
+
+  this._pausePriority = -1;
+  this._prevState = EventEnums.StateType.Listening;
+  this._state = EventEnums.StateType.Listening; // Listening, Paused, Disabled, DisabledAll
+
+  this.stats = {
+    timeLastDispatched: 0,
+    dispatchCount: 0,
+    dispatchWhilePausedCount: 0,
+  };
+
+  this.settings = {
+    /*
+    cooldown: { 
+      interval: 1, 
+      duration: 0,
+      reset: 0,
+    },
     */
+    dispatchLimit: Infinity,
+    linkedEvents: [],
 
-    _id: uuidv4(),
-    _customType: EventEnums.InstanceType.EventInstance,
-    _parentEvent: parentEvent,
-    _connectionPriorityOrder: [],
-    _connectionPriorities: {},
-    _childEvents: [],
-    _resolvers: [],
-    _propagating: false,
-    _disables: 0,
+    dispatchOrder: [
+      DispatchOrder.Catalyst,
+      DispatchOrder.LinkedEvents,
+      DispatchOrder.DescendantEvents,
+      DispatchOrder.AscendantEvents
+    ],
 
-    _pausePriority: -1,
-    _prevState: EventEnums.StateType.Listening,
-    _state: EventEnums.StateType.Listening, // Listening, Paused, Disabled, DisabledAll
+    enableDescending: false,
+    enableLinked: true,
+    enableAscending: false,
+    enableSelf: true,
 
-    stats: {
-      timeLastDispatched: 0,
-      dispatchCount: 0,
-      dispatchWhilePausedCount: 0,
-    },
-
-    settings: {
-      /*
-      cooldown: { 
-        interval: 1, 
-        duration: 0,
-        reset: 0,
-      },
-      */
-      dispatchLimit: Infinity,
-      linkedEvents: [],
-
-      dispatchOrder: [
-        DispatchOrder.Catalyst,
-        DispatchOrder.LinkedEvents,
-        DispatchOrder.DescendantEvents,
-        DispatchOrder.AscendantEvents
-      ],
-
-      enableDescending: false,
-      enableLinked: true,
-      enableAscending: false,
-      enableSelf: true,
-
-      // custom event settings
-      ...settings
-    },
-
-    // event methods
-    connect,
-    fire,
-    fireAll,
-    disconnect,
-    disconnectAll,
-    pause,
-    pauseAll,
-    resume,
-    resumeAll,
-    validateNextDispatch,
-    wait,
-    isEnabled,
-    isDisabled,
-    isListening,
-    disableListeners,
-    enableListeners,
-    disableAll,
-    enableAll,
-    isDisabledOne,
-    isDisabledAll,
-    getState,
-    stopPropagating,
-    enable,
-    disable,
-    getHighestPriority,
-  }
+    // custom event settings
+    ...settings
+  };
 
   // add the new event instance to the parent event's child-event list
-  if (parentEvent) parentEvent._childEvents.push(event);
-
-  return event;
+  if (parentEvent) parentEvent._childEvents.push(this);
 }
+
+// event methods
+Event.prototype.connect = connect;
+Event.prototype.fire = fire;
+Event.prototype.fireAll = fireAll;
+Event.prototype.disconnect = disconnect;
+Event.prototype.disconnectAll = disconnectAll;
+Event.prototype.pause = pause;
+Event.prototype.pauseAll = pauseAll;
+Event.prototype.resume = resume;
+Event.prototype.resumeAll = resumeAll;
+Event.prototype.validateNextDispatch = validateNextDispatch;
+Event.prototype.wait = wait;
+Event.prototype.isEnabled = isEnabled;
+Event.prototype.isDisabled = isDisabled;
+Event.prototype.isListening = isListening;
+Event.prototype.disableListeners = disableListeners;
+Event.prototype.enableListeners = enableListeners;
+Event.prototype.disableAll = disableAll;
+Event.prototype.enableAll = enableAll;
+Event.prototype.isDisabledOne = isDisabledOne;
+Event.prototype.isDisabledAll = isDisabledAll;
+Event.prototype.getState = getState;
+Event.prototype.stopPropagating = stopPropagating;
+Event.prototype.enable = enable;
+Event.prototype.disable = disable;
+Event.prototype.getHighestPriority = getHighestPriority;
 
 module.exports = {
   Event,
   EventEnums,
   isConnectionType,
-  dispatchEvent
+  dispatchEvent,
 }
 

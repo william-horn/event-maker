@@ -3,6 +3,9 @@ const {modelArgs, objectValuesAreUndefined, objectMeetsCriteria} = require('./li
 const inspect = require('util').inspect;
 const { Event, EventEnums, dispatchEvent } = require('./event-maker');
 
+const event = new Event();
+
+
 // const f = () => console.log('connection 1')
 
 // const obj = {
@@ -18,42 +21,42 @@ const { Event, EventEnums, dispatchEvent } = require('./event-maker');
 // console.log(meets);
 
 
-const parent = Event();
-const event2 = Event(parent);
-const event = Event(event2);
+// const parent = Event();
+// const event2 = Event(parent);
+// const event = Event(event2);
 
-const f = () => console.log('connection 1')
+// const f = () => console.log('connection 1')
 
-const c = event.connect({
-  name: 'lol1',
-  handler: f
-});
-
-event.connect({
-  name: 'lol2',
-  handler: f
-});
-
-// event.connect({
+// const c = event.connect({
 //   name: 'lol1',
 //   handler: f
 // });
 
-parent.connect({ priority: 20, name: 'josh1', handler: () => console.log('josh on parent') });
-event2.connect({ name: 'jeff', handler: () => console.log('conn 2') });
-parent.connect({ name: 'bob', handler: () => console.log('parent fires') });
+// event.connect({
+//   name: 'lol2',
+//   handler: f
+// });
 
-event.connect({ priority: 1, name: 'will', handler: () => console.log('prio 1a') });
-event.connect({ priority: 100, handler: () => console.log('really high') });
-event.connect({ priority: 20, handler: () => console.log('123') });
+// // event.connect({
+// //   name: 'lol1',
+// //   handler: f
+// // });
 
-const y = event.connect({ priority: 1, name: 'josh', handler: () => console.log('prio 1b') });
+// parent.connect({ priority: 20, name: 'josh1', handler: () => console.log('josh on parent') });
+// event2.connect({ name: 'jeff', handler: () => console.log('conn 2') });
+// parent.connect({ name: 'bob', handler: () => console.log('parent fires') });
 
-// parent.disconnect({ name: 'bob' });
-// parent.disconnectAll();});;
-parent.pauseAll({ priority: 20 });
-parent.fire();
-event.fire();
+// event.connect({ priority: 1, name: 'will', handler: () => console.log('prio 1a') });
+// event.connect({ priority: 100, handler: () => console.log('really high') });
+// event.connect({ priority: 20, handler: () => console.log('123') });
+
+// const y = event.connect({ priority: 1, name: 'josh', handler: () => console.log('prio 1b') });
+
+// // parent.disconnect({ name: 'bob' });
+// // parent.disconnectAll();});;
+// parent.pauseAll({ priority: 20 });
+// parent.fire();
+// event.fire();
 // console.log(event);
 
 /*
