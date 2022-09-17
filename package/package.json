@@ -1,6 +1,6 @@
 {
   "name": "pseudo-events",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A portable API for writing connected event-driven code",
   "main": "src/pseudo-events.js",
   "directories": {

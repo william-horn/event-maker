@@ -161,7 +161,7 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   const stats = event.stats;
 
   // list of temporary settings for event
-  const headers = this.exportSettings(_headers);
+  const headers = event.exportSettings(_headers);
 
   const linkedEvents = headers.linkedEvents;
   const dispatchOrder = headers.dispatchOrder;

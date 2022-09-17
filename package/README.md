@@ -8,13 +8,28 @@ With `pseudo-events` you can link events together, create event chains, and crea
 * **Event priority control**
 * **Event dispatch order**
 * **Filtering out event connections**
-* **Recursive event toggling**
-* **Event sequences**
+* **Event toggling**
+* **Event sequences** *(not available yet)*
+* **User input control (if on client)** *(not available yet)*
 * etc
 
 
 
 **Important:** *documentation will be outdated until this project leaves early stages of development.*
+
+## Table of Contents
+* [Install](#install)
+* [Creating events](#event-instantiation)
+* [Connecting events](#connecting-events)
+* [Dispatching/firing events](#dispatching-events)
+* [Disconnecting events](#disconnecting-events)
+* [Waiting for events](#waiting-for-event-signals)
+* [Toggling events](#disablingtoggling-events)
+* [Pausing/Resuming events](#pauseresume-events)
+* [Dispatching events w/ headers](#using-dispatchevent-w-headers)
+* [Event dispatch order](#event-dispatch-order)
+* [Event validation order/error handling](#dispatch-validation-order)
+* [License](#license)
 
 ## Install
 
@@ -161,21 +176,6 @@ event.fire('hello', 'there', 'world!');
 ##
     =>  hello there world!
 
-As mentioned before, you can create as many connections to an event instance as you like. They will all be fired once the dispatcher is called.
-
-**Example:**
-
-```js
-event.connect({ handler: () => console.log('event connection #1') });
-event.connect({ handler: () => console.log('event connection #2') });
-event.connect({ handler: () => console.log('event connection #3') });
-
-event.fire();
-```
-##
-    =>  event connection #1
-        event connection #2
-        event connection #3
 
 ### **Disconnecting Events**
 
@@ -187,13 +187,13 @@ You can disconnect event connections by *name*, *handler function*, or by the *c
 The `disconnect` method takes up to three options; all of them are optional.
 
 
-* `name`? **&lt;string>**
+* **name**? *&lt;string>*
   - The name of the connection to disconnect
 
-- `handler`? **&lt;function>**
+- **handler**? *&lt;function>*
   * The handler function literal that was passed to a `connect` method
 
-* `connection`? **&lt;Connection Object>**
+* **connection**? *&lt;Connection Object>*
   - The connection object returned from the `connect` method
 
 
@@ -233,7 +233,7 @@ const connectionThree = event.connect({
   name: 'anotherName'
 });
 
-// start disconnecting by filter
+// start disconnecting with filter
 event.disconnect({ name: 'someName' });
 event.disconnect({ handler: someHandler });
 event.disconnect({ connection: connectionThree });
@@ -247,9 +247,7 @@ event.fire();
     =>  <Empty>
 
 
-The `disconnectAll` method will recursively call `disconnect` on all descendant events.
-
-This method takes the same arguments as `disconnect`. If no arguments are passed to `disconnectAll`, then **all** connections with `priority: 0` will be disconnected from the event instance and all of it's descendant events.
+The `disconnectAll` method will recursively call `disconnect` on all descendant events. This method takes the same options argument as `disconnect`.
 
 **Example:**
 ```js
@@ -275,7 +273,7 @@ const parentEvent = new Event()
 const childEvent = new Event(parentEvent);
 
 parentEvent.connect({ handler: () => console.log('parent event #1') });
-childEvent.connect({ handler: 'someName', () => console.log('child event #1') });
+childEvent.connect({ name: 'someName', handler: () => console.log('child event #1') });
 childEvent.connect({ handler: () => console.log('child event #2') });
 
 parentEvent.disconnectAll({ name: 'someName' });
@@ -286,17 +284,6 @@ parentEvent.fireAll();
 ##
     =>  parent event #1
         child event #2
-
-
-*Since we created a hierarchy with `childEvent` and `parentEvent`, doing:*
-```js
-parentEvent.fireAll();
-```
-*is the same as:*
-```js
-parentEvent.fire();
-childEvent.fire();
-```
 
 ### **Waiting for Event Signals**
 
@@ -326,7 +313,7 @@ setTimeout(
   2000
 );
 ```
-*(after 2 seconds)*
+*after 2 seconds:*
 ##
     =>  got back: [1, 'a', false]
 
@@ -334,7 +321,6 @@ setTimeout(
 
 Events can be enabled/disabled temporarily without needing to disconnect them. To do so, you can use the `disable` and `disableAll` methods.
 
-Behind the scenes, the `disableAll` method just recursively calls `disable` on all descendant events. These methods take no arguments.
 
 **Example:**
 
@@ -351,13 +337,96 @@ To enable the event again, simply use the `enable` or `enableAll` methods.
 
 **Note:** *The `enable` methods and `disable` methods are mutually exclusive to each other. If you disable an event using `disableAll`, then you can only re-enable it by using `enableAll`. Likewise with disable/enable.*
 
+Invalid:
+```js
+event.disableAll();
+event.enable();
+
+// or
+event.disable();
+event.enableAll();
+```
+Valid:
+```js
+event.disableAll();
+event.enableAll();
+
+// or
+event.disable();
+event.enable();
+```
+
+Contrary to the norm thus far, `disableAll` does not call `disable` recursively behind the scenes. It will call `disable` on the initial event, but descendant events will not have their state changed to `'Disabled'`. 
+
+Instead, they internally track how many ancestor events have been disabled (using `disableAll`) and if that number is greater than one the descendant event will not fire.
+
+This means while you cannot call a disable method on an already-disabled event, you *can* call a disable method on a descendant of a disabled event. 
+
+**Example:**
+
+```js
+const parent = new Event();
+const child = new Event(parent);
+
+child.connect({ handler: () => console.log('child fired') });
+
+parent.disableAll();
+child.disable(); // this is valid
+
+child.fire(); // => Disabled
+
+child.enable();
+child.fire() // => DisabledByAncestor
+
+parent.enableAll();
+child.fire() // => child fired
+```
+
 More coming soon.
 
 ### **Pause/Resume Events**
-...
+*[ In Development ]*
 
 ### **Using dispatchEvent w/ Headers**
-...
+As mentioned before, you can also fire events using the `dispatchEvent` function. This function gives you full customizable control over how an event will be dispatched and what effects it will have.
+
+For example, the `fire` method is called like this:
+```js
+dispatchEvent({ 
+  event: targetEvent,
+  args: [...args]
+});
+```
+whereas the `fireAll` method is called like this:
+```js
+dispatchEvent({
+  event: targetEvent,
+  args: [...args],
+  headers: {
+    dispatchDescendants: true
+  }
+});
+```
+
+Here is a list describing the different options you can pass to `dispatchEvent`:
+
+* **event** *&lt;EventInstance>*
+  - The target event to be dispatched.
+
+* **args** *&lt;any[]>*
+  - An array of arguments that will be passed to the event handler callback functions
+
+* **headers** *&lt;object>*
+  - An list of modified event settings that the event will use for this one-time dispatch. Any setting inside of event settings is a valid header to pass. Here are the common ones:
+    - **dispatchSelf** *&lt;boolean>*
+      * Determines whether the handler functions associated with the target event will be dispatched. If `true`, the connections on the target event will fire. If `false`, the connections will not fire but the dispatch will still be registered and the event can still bubble up or trickle down.
+    - **dispatchAscendants** *&lt;boolean>*
+      * Determines whether or not the event will bubble. If `true`, the event will bubble. If `false`, it will not. **This option is mutually exclusive with `dispatchDescendants`**
+    - **dispatchDescendants** *&lt;boolean>*
+      * Determines whether or not the event will trickle down and fire all descendant events. If `true`, it will trickle. If `false`, it will not.
+      **This option is mutually exclusive with `dispatchAscendants`**
+    - **dispatchOrder** *&lt;number[]>*
+      * Determines the order in which the event signals propagate throughout the hierarchy. (See [event dispatch order](#event-dispatch-order)
 
 ### **Event Dispatch Order**
 ...
