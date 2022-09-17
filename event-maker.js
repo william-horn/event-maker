@@ -107,13 +107,22 @@ const searchEventConnections = (event, options, caseHandler) => {
 
   const {
     priority = 0,
-    connection
+    connection,
+    name,
+    handler
   } = options
+
+  if (caseHandler.hasSearchParams) {
+    caseHandler.hasSearchParams(!!(name || handler) === true);
+  }
 
   const priorityIndex = _connectionPriorities[priority]?.orderIndex;
 
   // priority doesn't exist
-  if (!priorityIndex && priorityIndex !== 0) return;
+  if (!priorityIndex && priorityIndex !== 0) {
+    console.log(`Connection priority '${priority}' does not exist`);
+    return;
+  }
 
   // a connection instance was provided
   if (isConnectionType(connection)) {
@@ -130,8 +139,8 @@ const searchEventConnections = (event, options, caseHandler) => {
 
   // apply filter search
   const searchFilter = {
-    name: { value: options.name },
-    handler: { value: options.handler },
+    name: { value: name },
+    handler: { value: handler },
   };
 
   for (let i = 0; i <= priorityIndex; i++) {
@@ -532,11 +541,11 @@ const getHighestPriority = function() {
 } 
 
 const pause = function(options = { priority: 0 }) {
-  this._pausePriority = Math.max(-1, Math.min(options.priority - 1, this.getHighestPriority()));
+  this._pausePriority = Math.max(-1, Math.min(options.priority, this.getHighestPriority()));
 
   searchEventConnections(this, options, {
     search: connection => {
-      connection.pause();
+      // connection.pause();
     }
   });
 }

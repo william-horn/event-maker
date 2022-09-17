@@ -39,16 +39,22 @@ event.connect({
 //   handler: f
 // });
 
+parent.connect({ priority: 20, name: 'josh1', handler: () => console.log('josh on parent') });
 event2.connect({ name: 'jeff', handler: () => console.log('conn 2') });
 parent.connect({ name: 'bob', handler: () => console.log('parent fires') });
 
 event.connect({ priority: 1, name: 'will', handler: () => console.log('prio 1a') });
+event.connect({ priority: 100, handler: () => console.log('really high') });
+event.connect({ priority: 20, handler: () => console.log('123') });
+
 const y = event.connect({ priority: 1, name: 'josh', handler: () => console.log('prio 1b') });
 
 // parent.disconnect({ name: 'bob' });
 // parent.disconnectAll();});;
-event.pause({ priority: 1 });
+parent.pauseAll({ priority: 20 });
+parent.fire();
 event.fire();
+// console.log(event);
 
 /*
   dispatchEvent({
