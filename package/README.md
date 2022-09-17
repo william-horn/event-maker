@@ -314,12 +314,9 @@ const event = new Event();
 
 (async () => {
   try {
-    
     const result = await event.wait();
     console.log('got back: ', result);
-
   } catch(err) {
-
     console.log('event timed out');
   }
 })();
