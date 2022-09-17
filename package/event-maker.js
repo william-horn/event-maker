@@ -64,9 +64,14 @@ const { v4: uuidv4 } = require('uuid');
 const Connection = require('./connection-instance');
 const EventEnums = require('./enums');
 
-const isConnectionType = connection => {
+const isConnection = connection => {
   return typeof connection === 'object' 
     && connection._customType === EventEnums.InstanceType.EventConnection;
+}
+
+const isEvent = event => {
+  return typeof event === 'object'
+    && event._customType === EventEnums.InstanceType.EventInstance;
 }
 
 const recurseChildEvents = (event, callback) => {
@@ -125,7 +130,7 @@ const searchEventConnections = (event, options, caseHandler) => {
   }
 
   // a connection instance was provided
-  if (isConnectionType(connection)) {
+  if (isConnection(connection)) {
     const connectionList = _connectionPriorities[connection.priority].connections;
     if (caseHandler.hasConnection) {
       caseHandler.hasConnection(
@@ -816,7 +821,8 @@ Event.prototype.getHighestPriority = getHighestPriority;
 module.exports = {
   Event,
   EventEnums,
-  isConnectionType,
+  isConnection,
+  isEvent,
   dispatchEvent,
 }
 

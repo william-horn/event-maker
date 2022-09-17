@@ -1,5 +1,5 @@
 {
-  "name": "event-maker",
+  "name": "pseudo-events",
   "version": "1.0.1",
   "description": "A portable API for writing connected event-driven code",
   "main": "event-maker.js",

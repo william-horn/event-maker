@@ -1,6 +1,6 @@
 
 
-const { Event, EventEnums, dispatchEvent } = require('coderman-event-maker');
+const { Event, EventEnums, dispatchEvent } = require('@coderman/event-maker');
 
 const event = new Event();
 console.log(event);
