@@ -101,6 +101,58 @@ const collapseWaitingPromises = options => {
   }
 }
 
+const searchEventConnections = (event, options, caseHandler) => {
+  const { _connectionPriorities, _connectionPriorityOrder: _cpo } = event;
+
+  const noOptions = !options;
+  options = options || {};
+
+  const {
+    priority = 0,
+    connection
+  } = options
+
+  const priorityIndex = _connectionPriorities[priority]?.orderIndex;
+
+  // priority doesn't exist
+  if (!priorityIndex && priorityIndex !== 0) return;
+
+  // a connection instance was provided
+  if (isConnectionType(connection)) {
+    const connectionList = _connectionPriorities[connection._priority].connections;
+    if (caseHandler.hasConnection) {
+      caseHandler.hasConnection(
+        connectionList,
+        connectionList.findIndex(conn => conn === connection)
+      );
+    }
+    return;
+  }
+
+  // apply filter search
+  const searchFilter = {
+    name: { value: options.name },
+    handler: { value: options.handler }
+  };
+
+  for (let i = 0; i <= priorityIndex; i++) {
+    const connectionRow = _connectionPriorities[_cpo[i]];
+    const connectionList = connectionRow.connections;
+
+    for (let j = connectionList.length - 1; j >= 0; j--) {
+      const _connection = connectionList[j];
+
+      if (noOptions || objectMeetsCriteria(_connection, searchFilter)) {
+        if (caseHandler.search(connectionList, j)) break;
+      }
+    }
+
+    if (caseHandler.afterSearch) {
+      caseHandler.afterSearch(connectionList, _connectionPriorities, _cpo, i);
+    }
+  }
+}
+
 /*
   dispatchEvent(payload, ...args)
 
@@ -430,52 +482,20 @@ const fireAll = function(...args) {
     connection: conn
   })
 */
+
+
+
 const disconnect = function(options) {
-  const { _connectionPriorities, _connectionPriorityOrder: _cpo } = this;
-
-  const disconnectOverride = !options;
-  options = options || {};
-
-  const {
-    priority = 0,
-    connection
-  } = options
-
-  const priorityIndex = _connectionPriorities[priority]?.orderIndex;
-
-  // priority doesn't exist
-  if (!priorityIndex && priorityIndex !== 0) return;
-
-  // a connection instance was provided
-  if (isConnectionType(connection)) {
-    const connectionList = _connectionPriorities[connection._priority].connections;
-    connectionList.splice(connectionList.findIndex(conn => conn === connection), 1);
-    return;
-  }
-
-  // apply filter search
-  const searchFilter = {
-    name: { value: options.name },
-    handler: { value: options.handler }
-  };
-
-  for (let i = 0; i <= priorityIndex; i++) {
-    const connectionRow = _connectionPriorities[_cpo[i]];
-    const connectionList = connectionRow.connections;
-
-    for (let j = connectionList.length - 1; j >= 0; j--) {
-      const _connection = connectionList[j];
-
-      if (disconnectOverride || objectMeetsCriteria(_connection, searchFilter)) {
-        connectionList.splice(j, 1);
+  searchEventConnections(this, options, {
+    hasConnection: (list, index) => list.splice(index, 1),
+    search: (connectionList, index) => connectionList.splice(index, 1),
+    afterSearch: (connectionList, _connectionPriorities, _cpo, index) => {
+      if (connectionList.length === 0) {
+        delete _connectionPriorities[_cpo[index]];
+        _cpo.splice(index, 1);
       }
     }
-
-    if (connectionList.length === 0) {
-      delete _connectionPriorities[_cpo[i]];
-      _cpo.splice(i, 1);
-    }
-  }
+  });
 }
 
 /*
@@ -591,11 +611,11 @@ const isListening = function() {
   return this._pausePriority === -1;
 }
 
-const disableConnections = function() {
+const disableListeners = function() {
   this.settings.enableSelf = false;
 }
 
-const enableConnections = function() {
+const enableListeners = function() {
   this.settings.enableSelf = true;
 }
 
@@ -767,8 +787,8 @@ const Event = (parentEvent, settings) => {
     isEnabled,
     isDisabled,
     isListening,
-    disableConnections,
-    enableConnections,
+    disableListeners,
+    enableListeners,
     disableAll,
     enableAll,
     isDisabledOne,

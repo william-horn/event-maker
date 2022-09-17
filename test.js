@@ -38,7 +38,7 @@ event2.connect({ name: 'jeff', handler: () => console.log('conn 2') });
 parent.connect({ name: 'bob', handler: () => console.log('parent fires') });
 
 // parent.disconnect({ name: 'bob' });
-parent.disableAll();
+// parent.disconnectAll();
 event2.fire();
 
 /*
