@@ -1,10 +1,9 @@
 
-const {modelArgs, objectValuesAreUndefined, objectMeetsCriteria} = require('./lib');
-const inspect = require('util').inspect;
-const { Event, EventEnums, dispatchEvent } = require('./event-maker');
+
+const { Event, EventEnums, dispatchEvent } = require('coderman-event-maker');
 
 const event = new Event();
-
+console.log(event);
 
 // const f = () => console.log('connection 1')
 
