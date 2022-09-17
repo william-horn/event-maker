@@ -422,3 +422,14 @@ event.pause('*')
 event.pauseAll(1)
 
 ```
+
+## Pausing
+
+```js
+// pause all connections (priority-0)
+event.pause(); 
+
+// pause all connections
+event.pause({ priority: 2, name: 'someName' });
+
+```

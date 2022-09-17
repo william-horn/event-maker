@@ -46,6 +46,8 @@ todo: implement pause/resume mechanic for events
 todo: implement event connection strength/priorities
   * DONE - 09/13/2022
 todo: add error handling and centralize error messages
+todo: flesh-out connection instance class by giving it more fields/methods
+  * DONE - 09/17/2022
 
 ==================================================================================================================================
 */
@@ -56,13 +58,10 @@ todo: add error handling and centralize error messages
 const {
   modelArgs,
   objectMeetsCriteria,
-  toUpperCamelCase,
-  objectHasNoKeys,
-  objectValuesAreUndefined,
-  getObjectSubset
 } = require('./lib');
 
 const { v4: uuidv4 } = require('uuid');
+const Connection = require('./connection-instance');
 const EventEnums = require('./enums');
 
 const isConnectionType = connection => {
@@ -71,7 +70,6 @@ const isConnectionType = connection => {
 }
 
 const recurseChildEvents = (event, callback) => {
-
   const recurse = event => {
     callback(event);
 
@@ -119,9 +117,10 @@ const searchEventConnections = (event, options, caseHandler) => {
 
   // a connection instance was provided
   if (isConnectionType(connection)) {
-    const connectionList = _connectionPriorities[connection._priority].connections;
+    const connectionList = _connectionPriorities[connection.priority].connections;
     if (caseHandler.hasConnection) {
       caseHandler.hasConnection(
+        connection,
         connectionList,
         connectionList.findIndex(conn => conn === connection)
       );
@@ -132,7 +131,7 @@ const searchEventConnections = (event, options, caseHandler) => {
   // apply filter search
   const searchFilter = {
     name: { value: options.name },
-    handler: { value: options.handler }
+    handler: { value: options.handler },
   };
 
   for (let i = 0; i <= priorityIndex; i++) {
@@ -142,9 +141,14 @@ const searchEventConnections = (event, options, caseHandler) => {
     for (let j = connectionList.length - 1; j >= 0; j--) {
       const _connection = connectionList[j];
 
-      if (noOptions || objectMeetsCriteria(_connection, searchFilter)) {
-        if (caseHandler.search(connectionList, j)) break;
+      if (caseHandler.iterate) {
+        caseHandler.iterate(_connection, connectionList, j);
+      } else if (caseHandler.search) {
+        if (noOptions || objectMeetsCriteria(_connection, searchFilter)) {
+          if (caseHandler.search(_connection, connectionList, j)) break;
+        }
       }
+
     }
 
     if (caseHandler.afterSearch) {
@@ -226,7 +230,9 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
         for (let j = 0; j < connectionList.length; j++) {
           const connection = connectionList[j];
-          connection.handler(globalContext.catalyst, ...args);
+          if (connection._active) {
+            connection.handler(globalContext.catalyst, ...args);
+          }
         }
       }
     }
@@ -356,14 +362,7 @@ const connect = function(options = {}) {
   */
   let connectionRow = _connectionPriorities[priority];
   let connectionList;
-
-  const connection = {
-    _customType: EventEnums.InstanceType.EventConnection,
-    _priority: priority,
-    _active: true,
-    name,
-    handler
-  };
+  const connection = Connection(options);
 
   // self reference for filtering
   connection.connectionInstance = connection;
@@ -487,8 +486,8 @@ const fireAll = function(...args) {
 
 const disconnect = function(options) {
   searchEventConnections(this, options, {
-    hasConnection: (list, index) => list.splice(index, 1),
-    search: (connectionList, index) => connectionList.splice(index, 1),
+    hasConnection: (_, connectionList, index) => connectionList.splice(index, 1),
+    search: (_, connectionList, index) => connectionList.splice(index, 1),
     afterSearch: (connectionList, _connectionPriorities, _cpo, index) => {
       if (connectionList.length === 0) {
         delete _connectionPriorities[_cpo[index]];
@@ -527,9 +526,19 @@ const wait = function(timeout) {
   });
 }
 
+const getHighestPriority = function() {
+  const { _connectionPriorityOrder: _cpo } = this;
+  return _cpo[_cpo.length - 1];
+} 
 
-const pause = function(options) {
+const pause = function(options = { priority: 0 }) {
+  this._pausePriority = Math.max(-1, Math.min(options.priority - 1, this.getHighestPriority()));
 
+  searchEventConnections(this, options, {
+    search: connection => {
+      connection.pause();
+    }
+  });
 }
 
 const pauseAll = function(options) {
@@ -554,11 +563,13 @@ const isDisabledOne = function() {
 }
 
 const isEnabled = function() {
-  return !this.isDisabledOne() && !this.isDisabledAll();
+  return !this._state === EventEnums.StateType.Disabled 
+    && !this._state === EventEnums.StateType.DisabledAll;
 }
 
 const isDisabled = function() {
-  return this.isDisabledOne() || this.isDisabledAll();
+  return this._state === EventEnums.StateType.Disabled 
+    || this._state === EventEnums.StateType.DisabledAll;
 }
 
 const getState = function() {
@@ -631,7 +642,7 @@ const validateNextDispatch = function(caseHandler = {}) {
     },
   } = this;
 
-  const highestPriority = _cpo[_cpo.length - 1];
+  const highestPriority = this.getHighestPriority();
 
   const sendStatus = (state, status) => {
     const _case = caseHandler[state];
@@ -797,6 +808,7 @@ const Event = (parentEvent, settings) => {
     stopPropagating,
     enable,
     disable,
+    getHighestPriority,
   }
 
   // add the new event instance to the parent event's child-event list

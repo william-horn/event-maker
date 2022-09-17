@@ -29,6 +29,11 @@ const c = event.connect({
   handler: f
 });
 
+event.connect({
+  name: 'lol2',
+  handler: f
+});
+
 // event.connect({
 //   name: 'lol1',
 //   handler: f
@@ -37,9 +42,13 @@ const c = event.connect({
 event2.connect({ name: 'jeff', handler: () => console.log('conn 2') });
 parent.connect({ name: 'bob', handler: () => console.log('parent fires') });
 
+event.connect({ priority: 1, name: 'will', handler: () => console.log('prio 1a') });
+const y = event.connect({ priority: 1, name: 'josh', handler: () => console.log('prio 1b') });
+
 // parent.disconnect({ name: 'bob' });
-// parent.disconnectAll();
-event2.fire();
+// parent.disconnectAll();});;
+event.pause({ priority: 1 });
+event.fire();
 
 /*
   dispatchEvent({
