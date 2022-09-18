@@ -22,34 +22,41 @@ clockHoursUpdate.connect({
   handler: logger(' We are on hour: ')
 });
 
-const clockUpdateHandler = () => {
-  const now = Date.now();
-  const realSeconds = Math.floor(now / 1000);
-  const realMinutes = Math.floor(realSeconds / 60);
-  const realHours = Math.floor(realMinutes / 60);
+clockHoursUpdate.disable();
+clockHoursUpdate.disable();
+clockHoursUpdate.disable();
+clockHoursUpdate.enable();
+// clockHoursUpdate.enable();
+clockHoursUpdate.fire(5);
 
-  const seconds = realSeconds % 60;
-  const minutes = realMinutes % 60;
-  const hours = realHours % 60;
+// const clockUpdateHandler = () => {
+//   const now = Date.now();
+//   const realSeconds = Math.floor(now / 1000);
+//   const realMinutes = Math.floor(realSeconds / 60);
+//   const realHours = Math.floor(realMinutes / 60);
+
+//   const seconds = realSeconds % 60;
+//   const minutes = realMinutes % 60;
+//   const hours = realHours % 60;
   
-  if (now % 1000 > 900) {
-    clockSecondsUpdate.fire(seconds);
-    clockSecondsUpdate.disable();
-  } else {
-    clockSecondsUpdate.enable();
-  }
-  
-  if (seconds % 60 === 0) clockMinutesUpdate.fire(minutes);
-  if (minutes % 60 === 0) clockHoursUpdate.fire(hours);
+//   if (now % 1000 > 900) {
+//     clockSecondsUpdate.fire(seconds);
+//     clockSecondsUpdate.disable();
+//   } else {
+//     clockSecondsUpdate.enable();
+//   }
 
-  // console.log(now % 1000);
-}
+//   if (seconds % 60 === 0) clockMinutesUpdate.fire(minutes);
+//   if (minutes % 60 === 0) clockHoursUpdate.fire(hours);
 
-clockUpdate.connect({
-  name: 'onClockUpdate',
-  handler: clockUpdateHandler
-});
+//   // console.log(now % 1000);
+// }
 
-setInterval(() => clockUpdate.fire());
+// clockUpdate.connect({
+//   name: 'onClockUpdate',
+//   handler: clockUpdateHandler
+// });
+
+// setInterval(() => clockUpdate.fire());
 
 

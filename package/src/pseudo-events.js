@@ -460,7 +460,6 @@ const disableAll = function() {
 
   this._prevState = this._state;
   this._state = EventEnums.StateType.DisabledAll;
-
   recurseChildEvents(this, event => event._disables++);
 }
 
@@ -470,7 +469,7 @@ const enable = function() {
     return;
   }
 
-  this._state = EventEnums.StateType._prevState;
+  this._state = this._prevState;
 }
 
 const enableAll = function() {
@@ -479,8 +478,7 @@ const enableAll = function() {
     return;
   }
 
-  this._state = EventEnums.StateType._prevState;
-
+  this._state = this._prevState;
   recurseChildEvents(this, event => event._disables--);
 }
 

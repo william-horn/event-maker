@@ -58,7 +58,7 @@ With `pseudo-events` you can link events together, use them individually, create
 
 
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ## Install
 
@@ -66,7 +66,7 @@ With `pseudo-events` you can link events together, use them individually, create
 ```
 npm i pseudo-events
 ```
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ## API
 
@@ -88,7 +88,7 @@ const {
 
 More on that later.
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### **Event Instantiation**
 
@@ -156,7 +156,7 @@ const child = new Event(parent, {
 });
 ```
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### **Connecting Events**
 
@@ -193,7 +193,7 @@ event.connect({ name: 'someName', handler: eventHandler });
 
 Events have no limit to how many connections they can have. All connections will be dispatched when the dispatcher methods are called.
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### **Dispatching Events**
 
@@ -241,7 +241,7 @@ event.fire('hello', 'there', 'world!');
 ##
     =>  event fired with args: hello   there   world!
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### **Disconnecting Events**
 
@@ -351,7 +351,7 @@ parentEvent.fireAll();
     =>  parent event #1
         child event #2
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### **Waiting for Event Signals**
 
@@ -385,7 +385,7 @@ setTimeout(
 ##
     =>  got back: [1, 'a', false]
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 ### **Disabling/Toggling Events**
 
 Events can be enabled/disabled temporarily without needing to disconnect them. To do so, you can use the `disable` and `disableAll` methods.
@@ -453,12 +453,12 @@ child.fire() // => child fired
 
 More coming soon.
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### **Pause/Resume Events**
 *[ In Development ]*
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### **Using dispatchEvent w/ Headers**
 As mentioned before, you can also fire events using the `dispatchEvent` function. This function gives you full customizable control over how an event will be dispatched and what effects it will have.
@@ -557,23 +557,23 @@ linkedOne.fire();
 ##
     => ERROR: Detected cyclic linked events
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### **Event Dispatch Order**
 ...
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 ### **Dispatch Validation Order**
 ...
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ## Usage
 
 ### Keyboard input example
 ...
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ### Clock update example
 
@@ -591,7 +591,7 @@ const { Event } = require('pseudo-events');
 
 * #### [**ISC License**](https://opensource.org/licenses/ISC)
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
 
 ## Author
 
@@ -602,4 +602,4 @@ const { Event } = require('pseudo-events');
 * *github:* https://github.com/william-horn
 * *email:* williamjosephhorn@gmail.com
 
-[-> Back to table of contents](#table-of-contents)
+[> back to table of contents](#table-of-contents)
