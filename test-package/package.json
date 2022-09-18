@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@ncukondo/event-maker": "^1.0.4"
+  }
+}

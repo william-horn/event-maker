@@ -7,6 +7,7 @@ EventEnums.ConnectionPriority = {
   Factory: 2
 }
 
+// todo: make each enum item an object: { name: '...', value: ... }
 EventEnums.StateType = {
   Listening: 'Listening',
   Paused: 'Paused',
@@ -21,6 +22,7 @@ EventEnums.InstanceType = {
 
 EventEnums.DispatchStatus = {
   Disabled: 'Disabled',
+  UnknownRejectionError: 'UnknownRejectionError',
   DisabledByAncestor: 'DisabledByAncestor',
   Ghost: 'Ghost',
   NoConnection: 'NoConnection',

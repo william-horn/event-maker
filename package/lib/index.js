@@ -9,7 +9,8 @@ module.exports = {
   toCamelCase: require('./toCamelCase'),
   toUpperCamelCase: require('./toUpperCamelCase'),
   objectValuesAreUndefined: require('./objectValuesAreUndefined'),
-  getObjectSubset: require('./getObjectSubset')
+  getObjectSubset: require('./getObjectSubset'),
+  print: require('./print')
 
 }
 

@@ -1,6 +1,6 @@
 /*
 @author:  William J. Horn
-@file:    event-maker.js
+@file:    pseudo-events.js
 @date:    09/05/2022
 ==================================================================================================================================
 
@@ -12,26 +12,6 @@
 EventMaker was built from scratch by William J. Horn with yet another desperate attempt to re-invent the wheel 
 just "because". On a real note though, this is a pretty neat and efficient implementation of custom event handling. 
 
-Some features include:
-
-  * Event bubbling
-  * Event toggling
-  * Dispatch validation
-  * Creating event sequences (coming soon)
-  * Creating event priorities
-  * Built-in cooldown/interval handling in options
-  * more coming soon
-
-Documentation can be found here: https://github.com/william-horn/adventures-of-swindonia/blob/develop/public/lib/documentation/event-maker.md
-
-@changelog
-  [09-13/2022]
-    - Removed event states "Listening" and "Paused" and replaced them with _pausePriority. 
-      If _pausePriority === -1 then the state is assumed to be "Listening", otherwise if
-      _pausePriority > -1 then the state is assumed to be "Paused".
-
-    - connectWithPriority now defaults it's priority number to 1 if no priority is given.
-
 ==================================================================================================================================
 
 @todo
@@ -39,15 +19,9 @@ Documentation can be found here: https://github.com/william-horn/adventures-of-s
 | TODO |
 ==================================================================================================================================
 
-todo: add event yielding (promise-based awaiting for event dispatches)
-  * DONE - 09/14/2022
 todo: create constructor for event sequences (events for sequential event dispatches, like key combinations)
 todo: implement pause/resume mechanic for events
-todo: implement event connection strength/priorities
-  * DONE - 09/13/2022
 todo: add error handling and centralize error messages
-todo: flesh-out connection instance class by giving it more fields/methods
-  * DONE - 09/17/2022
 
 ==================================================================================================================================
 */
@@ -58,15 +32,20 @@ todo: flesh-out connection instance class by giving it more fields/methods
 const {
   modelArgs,
   objectMeetsCriteria,
-} = require('./lib');
+} = require('../lib');
 
 const { v4: uuidv4 } = require('uuid');
-const Connection = require('./connection-instance');
-const EventEnums = require('./enums');
+const Connection = require('../dist/connection-instance');
+const EventEnums = require('../dist/enums');
 
-const isConnectionType = connection => {
+const isConnection = connection => {
   return typeof connection === 'object' 
     && connection._customType === EventEnums.InstanceType.EventConnection;
+}
+
+const isEvent = event => {
+  return typeof event === 'object'
+    && event._customType === EventEnums.InstanceType.EventInstance;
 }
 
 const recurseChildEvents = (event, callback) => {
@@ -83,11 +62,9 @@ const recurseChildEvents = (event, callback) => {
 }
 
 const collapseWaitingPromises = options => {
-  const {
-    resolve: doResolve,
-    args = [],
-    resolvers,
-  } = options;
+  const doResolve = options.resolve;
+  const args = options.args || [];
+  const resolvers = options.resolvers;
 
   // fire all waiting resolvers
   for (let i = resolvers.length - 1; i >= 0; i--) {
@@ -100,17 +77,16 @@ const collapseWaitingPromises = options => {
 }
 
 const searchEventConnections = (event, options, caseHandler) => {
-  const { _connectionPriorities, _connectionPriorityOrder: _cpo } = event;
+  const _connectionPriorities = event._connectionPriorities;
+  const _cpo = event._connectionPriorityOrder;
 
   const noOptions = !options;
   options = options || {};
 
-  const {
-    priority = 0,
-    connection,
-    name,
-    handler
-  } = options
+  const priority = options.priority || 0;
+  const connection = options.connection;
+  const name = options.name;
+  const handler = options.handler;
 
   if (caseHandler.hasSearchParams) {
     caseHandler.hasSearchParams(!!(name || handler) === true);
@@ -125,7 +101,7 @@ const searchEventConnections = (event, options, caseHandler) => {
   }
 
   // a connection instance was provided
-  if (isConnectionType(connection)) {
+  if (isConnection(connection)) {
     const connectionList = _connectionPriorities[connection.priority].connections;
     if (caseHandler.hasConnection) {
       caseHandler.hasConnection(
@@ -166,73 +142,36 @@ const searchEventConnections = (event, options, caseHandler) => {
   }
 }
 
-/*
-  dispatchEvent(payload, ...args)
-
-  The internal function call for dispatching events
-
-  @param payload<object>
-    The data describing the dispatched event. The payload
-    object is structured as such:
-
-    payload {
-      caller<EventInstance> { ... },
-      event<EventInstance> { ... },
-      extensions?<object> {
-        bubbling?<boolean>,
-        continuePropagation?<boolean>
-      }
-    }
-
-  @param ...args<any>
-    The rest of the arguments passed by the user
-      
-  @returns <void>
-*/
-
-
 const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   const DispatchStatus = EventEnums.DispatchStatus;
 
-  const {
-    eventBlacklist,
-    headers: globalHeaders
-  } = globalContext;
+  const eventBlacklist = globalContext.eventBlacklist;
+  const globalHeaders = globalContext.headers;
 
-  const {
-    event,
-    args = [],
-    headers: _headers = {},
-  } = payload;
+  const event = payload.event;
+  const args = payload.args || [];
+  const _headers = payload.headers || {};
 
-  const {
-    _connectionPriorities,
-    _connectionPriorityOrder: _cpo,
-    _pausePriority,
-    _resolvers,
-    _parentEvent,
-    _childEvents,
-    settings: eventSettings,
-    stats
-  } = event;
+  const _connectionPriorities = event._connectionPriorities;
+  const _cpo = event._connectionPriorityOrder;
+  const _pausePriority = event._pausePriority;
+  const _resolvers = event._resolvers;
+  const _parentEvent = event._parentEvent;
+  const _childEvents = event._childEvents;
+  const stats = event.stats;
 
   // list of temporary settings for event
-  const headers = {
-    ...eventSettings,
-    ..._headers
-  }
+  const headers = event.exportSettings(_headers);
 
-  const {
-    linkedEvents,
-    dispatchOrder
-  } = headers;
+  const linkedEvents = headers.linkedEvents;
+  const dispatchOrder = headers.dispatchOrder;
 
   stats.dispatchCount++;
   event._propagating = true;
 
   // SELF DISPATCH TYPE
   const runEventHandlers = () => {
-    if (headers.enableSelf) {
+    if (!headers.ghost && headers.dispatchSelf) {
       for (let i = _cpo.length - 1; i > _pausePriority; i--) {
         const connectionRow = _connectionPriorities[_cpo[i]];
         const connectionList = connectionRow.connections;
@@ -255,7 +194,7 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
   // LINKED DISPATCH TYPE
   const runLinkedEventHandlers = () => {
-    if (linkedEvents.length > 0 && headers.enableLinked) {
+    if (linkedEvents.length > 0 && headers.dispatchLinked) {
       for (let i = 0; i < linkedEvents.length; i++) {
         const linkedEvent = linkedEvents[i];
 
@@ -277,7 +216,7 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
   // DESCENDANT DISPATCH TYPE
   const runDescendantEventHandlers = () => {
-    if (globalHeaders.enableDescending) {
+    if (globalHeaders.dispatchDescendants) {
       for (let i = 0; i < _childEvents.length; i++) {
         const childEvent = _childEvents[i];
 
@@ -291,7 +230,7 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
   // ASCENDANT DISPATCH TYPE
   const runAscendantEventHandlers = () => {
-    if (globalHeaders.enableAscending && _parentEvent && event._propagating) {
+    if (globalHeaders.dispatchAscendants && _parentEvent && event._propagating) {
       globalContext._dispatchEvent({
         event: _parentEvent,
         args
@@ -315,55 +254,39 @@ const onDispatchRejected = dispatchStatus => {
   console.log('dispatch failed: ', dispatchStatus);
 }
 
+/*
+  currently, any headers passed here will NOT be evaluated
+  in the validateNextDispatch method. fix this.
+*/
 const dispatchEvent = function(payload) {
   const globalContext = {
     eventBlacklist: { [payload.event._id]: true },
     catalyst: payload.event,
-    headers: {
-      ...payload.event.settings, 
-      ...(payload.headers || {})
-    },
+    headers: payload.event.exportSettings(payload.headers),
 
-    _dispatchEvent: function(_payload) {
+    _dispatchEvent: function(_payload, customSettings) {
       _payload.event.validateNextDispatch({
+        customSettings,
         ready: [onDispatchReady, [_payload, this]],
         rejected: [onDispatchRejected]
       });
     }
   }
 
-  if (globalContext.headers.enableAscending && globalContext.headers.enableDescending) {
-    throw 'Cannot use two mutually exclusive headers (enableAscending and enableDescending)';
+  if (globalContext.headers.dispatchAscendants && globalContext.headers.dispatchDescendants) {
+    throw 'Cannot use two mutually exclusive headers (dispatchAscendants and dispatchDescendants)';
   }
 
-  globalContext._dispatchEvent(payload);
+  globalContext._dispatchEvent(payload, globalContext.headers);
+  return payload.event;
 }
 
 
-/*
-  Method functions
-*/
-
-/*
-  event.connect(name, func)
-
-  Connects a handler function to an event
-
-  @param name?<string>
-    Name of the event connection
-
-  @param handler<function>
-    handler function that runs when the event is fired
-
-  @returns connectionInstance<object>
-*/
 const connect = function(options = {}) {
   const { _connectionPriorities, _connectionPriorityOrder: _cpo } = this;
 
   const { 
     priority = 0,
-    handler,
-    name
   } = options;
 
   /*
@@ -371,7 +294,7 @@ const connect = function(options = {}) {
   */
   let connectionRow = _connectionPriorities[priority];
   let connectionList;
-  const connection = Connection(options);
+  const connection = new Connection(options);
 
   // self reference for filtering
   connection.connectionInstance = connection;
@@ -412,30 +335,11 @@ const connect = function(options = {}) {
   return connection;
 }
 
-
-/*
-  event.stopPropagation()
-
-  Stops the caller event from propagating through 
-  event bubbling
-
-  @params <void>
-  @returns <void>
-*/
 const stopPropagating = function() {
   this._propagating = false;
 }
 
-/*
-  event.fire(...args)
 
-  The interface method for dispatching event connections
-
-  @params ...args<any>
-    The arguments passed down to the handler function callbacks
-
-  @returns <void>
-*/
 const fire = function(...args) {
   dispatchEvent({
     event: this,
@@ -443,54 +347,16 @@ const fire = function(...args) {
   });
 }
 
-/*
-  event.fireAll(...args)
 
-  @params ...args<any>
-    The arguments passed down to the handler function callbacks
-
-  @returns <void>
-*/
 const fireAll = function(...args) {
   dispatchEvent({
     event: this,
     args: [...args],
     headers: {
-      enableDescending: true,
+      dispatchDescendants: true,
     }
   });
 }
-
-/*
-  event.disconnect(connectionName?<string, connectionInstance>, handlerFunction?<function>)
-
-  @param connectionName<string>
-    The name of the connection instance to be disconnected
-
-  @param connectionName<connectionInstance>
-    The literal connection instance returned from event.connect() to be
-    disconnected
-
-  @param handlerFunction<function>
-    The literal handler function used in the event connections to be
-    disconnected
-
-  @note In the future these arguments will probably be replaced with
-  an options object for more filtering options
-
-  @returns <void>
-*/
-
-/*
-  disconnect()
-  disconnect({
-    priority: number,
-    name: 'thing',
-    handler: f,
-    connection: conn
-  })
-*/
-
 
 
 const disconnect = function(options) {
@@ -506,16 +372,7 @@ const disconnect = function(options) {
   });
 }
 
-/*
-  event.disconnectAll(...args)
 
-  The interface method for disconnecting event connections
-  and descendant event connections based on filter arguments
-
-  @params (same as event.disconnect)
-
-  @returns <void>
-*/
 const disconnectAll = function(options) {
   recurseChildEvents(this, event => event.disconnect(options));
 }
@@ -632,24 +489,41 @@ const isListening = function() {
 }
 
 const disableListeners = function() {
-  this.settings.enableSelf = false;
+  this.settings.dispatchSelf = false;
 }
 
 const enableListeners = function() {
-  this.settings.enableSelf = true;
+  this.settings.dispatchSelf = true;
 }
 
+/*
+  validateNextDispatch({
+    ready?: [handler<func>, [...args]],
+    rejected?: [handler<func>, [...args]],
+    customSettings?: { ... }
+  });
 
+  ready
+    - callback fires if validation passes
+
+  rejected
+    - callback fires if validation fails
+
+  customSettings
+    - temporary settings that override the event settings. event
+    settings will not be changed.
+*/
 const validateNextDispatch = function(caseHandler = {}) {
-  const { 
-    _connectionPriorityOrder: _cpo, 
-    _pausePriority,
-    settings: { dispatchLimit, ghost },
-    stats: { 
-      timeLastDispatched,
-      dispatchCount
-    },
-  } = this;
+  const eventSettings = caseHandler.customSettings || this.settings;
+
+  const dispatchLimit = eventSettings.dispatchLimit;
+  const ghost = eventSettings.ghost;
+
+  const stats = this.stats; 
+  const _cpo = this._connectionPriorityOrder;
+  const _pausePriority = this._pausePriority;
+  const timeLastDispatched = stats.timeLastDispatched;
+  const dispatchCount = stats.dispatchCount;
 
   const highestPriority = this.getHighestPriority();
 
@@ -685,7 +559,7 @@ const validateNextDispatch = function(caseHandler = {}) {
   }
 
   // connections list is empty; no connections exist
-  if (_cpo.length === 0) {
+  if (_cpo.length === 0 && eventSettings.requiresConnection) {
     sendStatus('rejected', DispatchStatus.NoConnection);
     return false;
   }
@@ -713,21 +587,29 @@ const validateNextDispatch = function(caseHandler = {}) {
     sendStatus('ready', DispatchStatus.PriorityListening);
     return true;
   }
+
+  sendStatus('rejected', DispatchStatus.UnknownRejectionError);
+  return false
 }
 
-/*
-  event(parentEvent?<EventInstance>, settings?<object>)
+const exportSettings = function(extension = {}) {
+  const settings = this.settings;
 
-  @param parentEvent<EventInstance>
-    Another event instance that will act as the parent for the current event.
+  return {
+    cooldown: settings.cooldown,
+    dispatchLimit: settings.dispatchLimit,
+    linkedEvents: settings.linkedEvents,
+    dispatchOrder: settings.dispatchOrder,
+    dispatchDescendants: settings.dispatchDescendants,
+    dispatchLinked: settings.dispatchLinked,
+    dispatchAscendants: settings.dispatchAscendants,
+    dispatchSelf: settings.dispatchSelf,
+    requiresConnection: settings.requiresConnection,
+    ...extension
+  }
+}
 
-  @param settings<object>
-    An object of additional settings that will configure the behavior of the 
-    current event.
-
-  @returns event<EventInstance>
-*/
-const Event = (parentEvent, settings) => {
+const Event = function(parentEvent, settings) {
   const DispatchOrder = EventEnums.DispatchOrder;
 
   [parentEvent, settings] = modelArgs([
@@ -735,101 +617,90 @@ const Event = (parentEvent, settings) => {
     { rule: [settings, 'object'], default: {} }
   ]);
 
-  const event = {
-    /* 
-      _connectionPriorityOrder: [0, 3, 5]
-      _connectionPriorities: { 
-        ['5']: {orderIndex: 2, connections: []},
-        ['0']: {orderIndex: 0, connections: []},
-        ['3']: {orderIndex: 1, connections: []},
-      }
-    */
+  this._id = uuidv4();
+  this._customType = EventEnums.InstanceType.EventInstance;
+  this._parentEvent = parentEvent;
+  this._connectionPriorityOrder = [];
+  this._connectionPriorities = {};
+  this._childEvents = [];
+  this._resolvers = [];
+  this._propagating = false;
+  this._disables = 0;
 
-    _id: uuidv4(),
-    _customType: EventEnums.InstanceType.EventInstance,
-    _parentEvent: parentEvent,
-    _connectionPriorityOrder: [],
-    _connectionPriorities: {},
-    _childEvents: [],
-    _resolvers: [],
-    _propagating: false,
-    _disables: 0,
+  this._pausePriority = -1;
+  this._prevState = EventEnums.StateType.Listening;
+  this._state = EventEnums.StateType.Listening; // Listening, Paused, Disabled, DisabledAll
 
-    _pausePriority: -1,
-    _prevState: EventEnums.StateType.Listening,
-    _state: EventEnums.StateType.Listening, // Listening, Paused, Disabled, DisabledAll
+  this.stats = {
+    timeLastDispatched: 0,
+    dispatchCount: 0,
+    dispatchWhilePausedCount: 0,
+  };
 
-    stats: {
-      timeLastDispatched: 0,
-      dispatchCount: 0,
-      dispatchWhilePausedCount: 0,
+  this.settings = {
+    cooldown: { 
+      interval: 1, 
+      duration: 0,
+      reset: 0,
     },
 
-    settings: {
-      /*
-      cooldown: { 
-        interval: 1, 
-        duration: 0,
-        reset: 0,
-      },
-      */
-      dispatchLimit: Infinity,
-      linkedEvents: [],
+    dispatchLimit: Infinity,
+    linkedEvents: [],
 
-      dispatchOrder: [
-        DispatchOrder.Catalyst,
-        DispatchOrder.LinkedEvents,
-        DispatchOrder.DescendantEvents,
-        DispatchOrder.AscendantEvents
-      ],
+    dispatchOrder: [
+      DispatchOrder.Catalyst,
+      DispatchOrder.LinkedEvents,
+      DispatchOrder.DescendantEvents,
+      DispatchOrder.AscendantEvents
+    ],
 
-      enableDescending: false,
-      enableLinked: true,
-      enableAscending: false,
-      enableSelf: true,
+    dispatchDescendants: false,
+    dispatchLinked: true,
+    dispatchAscendants: false,
+    dispatchSelf: true,
+    requiresConnection: true,
+    ghost: false,
 
-      // custom event settings
-      ...settings
-    },
-
-    // event methods
-    connect,
-    fire,
-    fireAll,
-    disconnect,
-    disconnectAll,
-    pause,
-    pauseAll,
-    resume,
-    resumeAll,
-    validateNextDispatch,
-    wait,
-    isEnabled,
-    isDisabled,
-    isListening,
-    disableListeners,
-    enableListeners,
-    disableAll,
-    enableAll,
-    isDisabledOne,
-    isDisabledAll,
-    getState,
-    stopPropagating,
-    enable,
-    disable,
-    getHighestPriority,
-  }
+    // custom event settings
+    ...settings
+  };
 
   // add the new event instance to the parent event's child-event list
-  if (parentEvent) parentEvent._childEvents.push(event);
-
-  return event;
+  if (parentEvent) parentEvent._childEvents.push(this);
 }
+
+// event methods
+Event.prototype.connect = connect;
+Event.prototype.fire = fire;
+Event.prototype.fireAll = fireAll;
+Event.prototype.disconnect = disconnect;
+Event.prototype.disconnectAll = disconnectAll;
+Event.prototype.pause = pause;
+Event.prototype.pauseAll = pauseAll;
+Event.prototype.resume = resume;
+Event.prototype.resumeAll = resumeAll;
+Event.prototype.validateNextDispatch = validateNextDispatch;
+Event.prototype.wait = wait;
+Event.prototype.isEnabled = isEnabled;
+Event.prototype.isDisabled = isDisabled;
+Event.prototype.isListening = isListening;
+Event.prototype.disableListeners = disableListeners;
+Event.prototype.enableListeners = enableListeners;
+Event.prototype.disableAll = disableAll;
+Event.prototype.enableAll = enableAll;
+Event.prototype.isDisabledOne = isDisabledOne;
+Event.prototype.isDisabledAll = isDisabledAll;
+Event.prototype.getState = getState;
+Event.prototype.stopPropagating = stopPropagating;
+Event.prototype.enable = enable;
+Event.prototype.disable = disable;
+Event.prototype.getHighestPriority = getHighestPriority;
+Event.prototype.exportSettings = exportSettings;
 
 module.exports = {
   Event,
   EventEnums,
-  isConnectionType,
-  dispatchEvent
+  isConnection,
+  isEvent,
+  dispatchEvent,
 }
-
