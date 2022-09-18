@@ -1,6 +1,6 @@
 /*
 @author:  William J. Horn
-@file:    event-maker.js
+@file:    pseudo-events.js
 @date:    09/05/2022
 ==================================================================================================================================
 
@@ -163,7 +163,7 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   // list of temporary settings for event
   const headers = event.exportSettings(_headers);
 
-  const boundEvents = headers.boundEvents;
+  const linkedEvents = headers.linkedEvents;
   const dispatchOrder = headers.dispatchOrder;
 
   stats.dispatchCount++;
@@ -171,9 +171,9 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
   // SELF DISPATCH TYPE
   /*
-    requireConnection, dispatchSelf, ghost
+    requiresConnection, dispatchSelf, ghost
 
-    requireConnection
+    requiresConnection
       - if false, then fire event event if no connections exist
 
     ghost
@@ -203,9 +203,9 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
   // LINKED DISPATCH TYPE
   const runLinkedEventHandlers = () => {
-    if (boundEvents.length > 0 && headers.dispatchLinked) {
-      for (let i = 0; i < boundEvents.length; i++) {
-        const linkedEvent = boundEvents[i];
+    if (linkedEvents.length > 0 && headers.dispatchLinked) {
+      for (let i = 0; i < linkedEvents.length; i++) {
+        const linkedEvent = linkedEvents[i];
 
         if (eventBlacklist[linkedEvent._id]) {
           throw 'Detected cyclic linked events';
@@ -568,7 +568,7 @@ const validateNextDispatch = function(caseHandler = {}) {
   }
 
   // connections list is empty; no connections exist
-  if (_cpo.length === 0 && eventSettings.requireConnection) {
+  if (_cpo.length === 0 && eventSettings.requiresConnection) {
     sendStatus('rejected', DispatchStatus.NoConnection);
     return false;
   }
@@ -607,13 +607,13 @@ const exportSettings = function(extension = {}) {
   return {
     cooldown: settings.cooldown,
     dispatchLimit: settings.dispatchLimit,
-    boundEvents: settings.boundEvents,
+    linkedEvents: settings.linkedEvents,
     dispatchOrder: settings.dispatchOrder,
     dispatchDescendants: settings.dispatchDescendants,
     dispatchLinked: settings.dispatchLinked,
     dispatchAscendants: settings.dispatchAscendants,
     dispatchSelf: settings.dispatchSelf,
-    requiredConnection: settings.requiredConnection,
+    requiresConnection: settings.requiresConnection,
     ...extension
   }
 }
@@ -654,11 +654,11 @@ const Event = function(parentEvent, settings) {
     },
 
     dispatchLimit: Infinity,
-    boundEvents: [],
+    linkedEvents: [],
 
     dispatchOrder: [
       DispatchOrder.Catalyst,
-      DispatchOrder.BoundEvents,
+      DispatchOrder.LinkedEvents,
       DispatchOrder.DescendantEvents,
       DispatchOrder.AscendantEvents
     ],
@@ -667,7 +667,7 @@ const Event = function(parentEvent, settings) {
     dispatchLinked: true,
     dispatchAscendants: false,
     dispatchSelf: true,
-    requireConnection: true,
+    requiresConnection: true,
     ghost: false,
 
     // custom event settings

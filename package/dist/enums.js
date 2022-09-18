@@ -34,7 +34,7 @@ EventEnums.DispatchStatus = {
 
 EventEnums.DispatchOrder = {
   Catalyst: 0,
-  BoundEvents: 1,
+  LinkedEvents: 1,
   DescendantEvents: 2,
   AscendantEvents: 3
 }
