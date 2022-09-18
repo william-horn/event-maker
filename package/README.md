@@ -26,6 +26,7 @@ The `pseudo-events` package was developed by [William J. Horn](https://github.co
   * [Pausing/Resuming events](#pauseresume-events) | `pause`, `pauseAll`, `resume`, `resumeAll`
   * [Dispatching events w/ headers](#using-dispatchevent-w-headers) | `dispatchEvent`
 * [**Concepts**](#concepts)
+  * [Linked events](#linked-events)
   * [Event dispatch order](#event-dispatch-order)
   * [Event validation & error handling](#dispatch-validation-order)
 * [**Usage**](#usage)
@@ -457,6 +458,54 @@ More coming soon.
 ### **Pause/Resume Events**
 *[ In Development ]*
 
+[-> Back to table of contents](#table-of-contents)
+
+### **Using dispatchEvent w/ Headers**
+As mentioned before, you can also fire events using the `dispatchEvent` function. This function gives you full customizable control over how an event will be dispatched and what effects it will have.
+
+For example, the `fire` method is called like this:
+```js
+dispatchEvent({ 
+  event: targetEvent,
+  args: [...args]
+});
+```
+whereas the `fireAll` method is called like this:
+```js
+dispatchEvent({
+  event: targetEvent,
+  args: [...args],
+  headers: {
+    dispatchDescendants: true
+  }
+});
+```
+
+Here is a list describing the different options you can pass to `dispatchEvent`:
+
+* **event** *&lt;EventInstance>*
+  - The target event to be dispatched.
+
+* **args** *&lt;any[]>*
+  - An array of arguments that will be passed to the event handler callback functions
+
+* **headers** *&lt;object>*
+  - An list of modified event settings that the event will use for this one-time dispatch. Any setting inside of event settings is a valid header to pass. Here are the common ones:
+
+    - **dispatchSelf** *&lt;boolean>*
+      * Determines whether the handler functions associated with the target event will be dispatched. If `true`, the connections on the target event will fire. If `false`, the connections will not fire but the dispatch will still be registered and the event can still bubble up or trickle down.
+    - **dispatchAscendants** *&lt;boolean>*
+      * Determines whether or not the event will bubble. If `true`, the event will bubble. If `false`, it will not. **This option is mutually exclusive with `dispatchDescendants`**
+    - **dispatchDescendants** *&lt;boolean>*
+      * Determines whether or not the event will trickle down and fire all descendant events. If `true`, it will trickle. If `false`, it will not.
+      **This option is mutually exclusive with `dispatchAscendants`**
+    - **dispatchOrder** *&lt;number[]>*
+      * Determines the order in which the event signals propagate throughout the hierarchy. ([See event dispatch order](#event-dispatch-order))
+
+## Concepts
+
+In concepts you will find all information relating to event config options, ordering of event behavior, and insight to what's happening under the hood.
+
 ### **Linked Events**
 You can bind multiple events to a target event without creating a hierarchy when one isn't necessary by using the `linkedEvents` option. This event settings allows you to pass an array containing all event instances that should be fired when the target event is fired. 
 
@@ -508,66 +557,41 @@ linkedOne.fire();
 ##
     => ERROR: Detected cyclic linked events
 
-### **Using dispatchEvent w/ Headers**
-As mentioned before, you can also fire events using the `dispatchEvent` function. This function gives you full customizable control over how an event will be dispatched and what effects it will have.
+[-> Back to table of contents](#table-of-contents)
 
-For example, the `fire` method is called like this:
-```js
-dispatchEvent({ 
-  event: targetEvent,
-  args: [...args]
-});
-```
-whereas the `fireAll` method is called like this:
-```js
-dispatchEvent({
-  event: targetEvent,
-  args: [...args],
-  headers: {
-    dispatchDescendants: true
-  }
-});
-```
-
-Here is a list describing the different options you can pass to `dispatchEvent`:
-
-* **event** *&lt;EventInstance>*
-  - The target event to be dispatched.
-
-* **args** *&lt;any[]>*
-  - An array of arguments that will be passed to the event handler callback functions
-
-* **headers** *&lt;object>*
-  - An list of modified event settings that the event will use for this one-time dispatch. Any setting inside of event settings is a valid header to pass. Here are the common ones:
-
-    - **dispatchSelf** *&lt;boolean>*
-      * Determines whether the handler functions associated with the target event will be dispatched. If `true`, the connections on the target event will fire. If `false`, the connections will not fire but the dispatch will still be registered and the event can still bubble up or trickle down.
-    - **dispatchAscendants** *&lt;boolean>*
-      * Determines whether or not the event will bubble. If `true`, the event will bubble. If `false`, it will not. **This option is mutually exclusive with `dispatchDescendants`**
-    - **dispatchDescendants** *&lt;boolean>*
-      * Determines whether or not the event will trickle down and fire all descendant events. If `true`, it will trickle. If `false`, it will not.
-      **This option is mutually exclusive with `dispatchAscendants`**
-    - **dispatchOrder** *&lt;number[]>*
-      * Determines the order in which the event signals propagate throughout the hierarchy. ([See event dispatch order](#event-dispatch-order))
-
-## Concepts
 ### **Event Dispatch Order**
 ...
+
+[-> Back to table of contents](#table-of-contents)
 ### **Dispatch Validation Order**
 ...
+
+[-> Back to table of contents](#table-of-contents)
 
 ## Usage
 
 ### Keyboard input example
 ...
 
+[-> Back to table of contents](#table-of-contents)
+
 ### Clock update example
 
+
+Say we want a program that let's us keep track of clock time, and we need an event for **seconds**, **minutes**, and **hour** changes. Here is a potential implementation using this package:
+
+```js
+const { Event } = require('pseudo-events');
+```
+
+*(Coming soon)*
 
 
 ## License
 
 * #### [**ISC License**](https://opensource.org/licenses/ISC)
+
+[-> Back to table of contents](#table-of-contents)
 
 ## Author
 
@@ -577,3 +601,5 @@ Here is a list describing the different options you can pass to `dispatchEvent`:
 
 * *github:* https://github.com/william-horn
 * *email:* williamjosephhorn@gmail.com
+
+[-> Back to table of contents](#table-of-contents)

@@ -170,15 +170,6 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   event._propagating = true;
 
   // SELF DISPATCH TYPE
-  /*
-    requiresConnection, dispatchSelf, ghost
-
-    requiresConnection
-      - if false, then fire event event if no connections exist
-
-    ghost
-      - 
-  */
   const runEventHandlers = () => {
     if (!headers.ghost && headers.dispatchSelf) {
       for (let i = _cpo.length - 1; i > _pausePriority; i--) {
