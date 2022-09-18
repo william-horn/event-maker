@@ -163,15 +163,24 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
   // list of temporary settings for event
   const headers = event.exportSettings(_headers);
 
-  const linkedEvents = headers.linkedEvents;
+  const boundEvents = headers.boundEvents;
   const dispatchOrder = headers.dispatchOrder;
 
   stats.dispatchCount++;
   event._propagating = true;
 
   // SELF DISPATCH TYPE
+  /*
+    requireConnection, dispatchSelf, ghost
+
+    requireConnection
+      - if false, then fire event event if no connections exist
+
+    ghost
+      - 
+  */
   const runEventHandlers = () => {
-    if (headers.dispatchSelf) {
+    if (!headers.ghost && headers.dispatchSelf) {
       for (let i = _cpo.length - 1; i > _pausePriority; i--) {
         const connectionRow = _connectionPriorities[_cpo[i]];
         const connectionList = connectionRow.connections;
@@ -194,9 +203,9 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
 
   // LINKED DISPATCH TYPE
   const runLinkedEventHandlers = () => {
-    if (linkedEvents.length > 0 && headers.dispatchLinked) {
-      for (let i = 0; i < linkedEvents.length; i++) {
-        const linkedEvent = linkedEvents[i];
+    if (boundEvents.length > 0 && headers.dispatchLinked) {
+      for (let i = 0; i < boundEvents.length; i++) {
+        const linkedEvent = boundEvents[i];
 
         if (eventBlacklist[linkedEvent._id]) {
           throw 'Detected cyclic linked events';
@@ -254,14 +263,19 @@ const onDispatchRejected = dispatchStatus => {
   console.log('dispatch failed: ', dispatchStatus);
 }
 
+/*
+  currently, any headers passed here will NOT be evaluated
+  in the validateNextDispatch method. fix this.
+*/
 const dispatchEvent = function(payload) {
   const globalContext = {
     eventBlacklist: { [payload.event._id]: true },
     catalyst: payload.event,
     headers: payload.event.exportSettings(payload.headers),
 
-    _dispatchEvent: function(_payload) {
+    _dispatchEvent: function(_payload, customSettings) {
       _payload.event.validateNextDispatch({
+        customSettings,
         ready: [onDispatchReady, [_payload, this]],
         rejected: [onDispatchRejected]
       });
@@ -272,7 +286,8 @@ const dispatchEvent = function(payload) {
     throw 'Cannot use two mutually exclusive headers (dispatchAscendants and dispatchDescendants)';
   }
 
-  globalContext._dispatchEvent(payload);
+  globalContext._dispatchEvent(payload, globalContext.headers);
+  return payload.event;
 }
 
 
@@ -490,17 +505,34 @@ const enableListeners = function() {
   this.settings.dispatchSelf = true;
 }
 
+/*
+  validateNextDispatch({
+    ready?: [handler<func>, [...args]],
+    rejected?: [handler<func>, [...args]],
+    customSettings?: { ... }
+  });
 
+  ready
+    - callback fires if validation passes
+
+  rejected
+    - callback fires if validation fails
+
+  customSettings
+    - temporary settings that override the event settings. event
+    settings will not be changed.
+*/
 const validateNextDispatch = function(caseHandler = {}) {
-  const { 
-    _connectionPriorityOrder: _cpo, 
-    _pausePriority,
-    settings: { dispatchLimit, ghost },
-    stats: { 
-      timeLastDispatched,
-      dispatchCount
-    },
-  } = this;
+  const eventSettings = caseHandler.customSettings || this.settings;
+
+  const dispatchLimit = eventSettings.dispatchLimit;
+  const ghost = eventSettings.ghost;
+
+  const stats = this.stats; 
+  const _cpo = this._connectionPriorityOrder;
+  const _pausePriority = this._pausePriority;
+  const timeLastDispatched = stats.timeLastDispatched;
+  const dispatchCount = stats.dispatchCount;
 
   const highestPriority = this.getHighestPriority();
 
@@ -536,7 +568,7 @@ const validateNextDispatch = function(caseHandler = {}) {
   }
 
   // connections list is empty; no connections exist
-  if (_cpo.length === 0) {
+  if (_cpo.length === 0 && eventSettings.requireConnection) {
     sendStatus('rejected', DispatchStatus.NoConnection);
     return false;
   }
@@ -564,6 +596,9 @@ const validateNextDispatch = function(caseHandler = {}) {
     sendStatus('ready', DispatchStatus.PriorityListening);
     return true;
   }
+
+  sendStatus('rejected', DispatchStatus.UnknownRejectionError);
+  return false
 }
 
 const exportSettings = function(extension = {}) {
@@ -572,12 +607,13 @@ const exportSettings = function(extension = {}) {
   return {
     cooldown: settings.cooldown,
     dispatchLimit: settings.dispatchLimit,
-    linkedEvents: settings.linkedEvents,
+    boundEvents: settings.boundEvents,
     dispatchOrder: settings.dispatchOrder,
     dispatchDescendants: settings.dispatchDescendants,
     dispatchLinked: settings.dispatchLinked,
     dispatchAscendants: settings.dispatchAscendants,
     dispatchSelf: settings.dispatchSelf,
+    requiredConnection: settings.requiredConnection,
     ...extension
   }
 }
@@ -618,11 +654,11 @@ const Event = function(parentEvent, settings) {
     },
 
     dispatchLimit: Infinity,
-    linkedEvents: [],
+    boundEvents: [],
 
     dispatchOrder: [
       DispatchOrder.Catalyst,
-      DispatchOrder.LinkedEvents,
+      DispatchOrder.BoundEvents,
       DispatchOrder.DescendantEvents,
       DispatchOrder.AscendantEvents
     ],
@@ -631,6 +667,8 @@ const Event = function(parentEvent, settings) {
     dispatchLinked: true,
     dispatchAscendants: false,
     dispatchSelf: true,
+    requireConnection: true,
+    ghost: false,
 
     // custom event settings
     ...settings

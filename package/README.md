@@ -1,44 +1,69 @@
 
-# About
+
+# pseudo-events
 
 The `pseudo-events` package was developed by [William J. Horn](https://github.com/william-horn) as a side project during the development of an online browser game called **Adventures of Swindonia**. It is intended to make interfacing with event-driven tasks much easier by allowing the developer to create their own custom events which they can manipulate in a wide variety of ways.
+## Table of Contents
+* [**About**]()
+  * [Priority manipulation]()
+  * [Event dispatch order]()
+  * [Filtering]()
+  * [Event toggling]()
+* [**Install**](#install)
+  * [npm](#npm)
+* [**API**](#api)
+  * [Creating events](#event-instantiation) | `Event`
+  * [Connecting events](#connecting-events) | `connect`
+  * [Dispatching/firing events](#dispatching-events) | `fire`, `fireAll`
+  * [Disconnecting events](#disconnecting-events) | `disconnect`, `disconnectAll`
+  * [Waiting for events](#waiting-for-event-signals) | `wait`
+  * [Toggling events](#disablingtoggling-events) | `disable`, `disableAll`, `enable`, `enableAll`
+  * [Pausing/Resuming events](#pauseresume-events) | `pause`, `pauseAll`, `resume`, `resumeAll`
+  * [Dispatching events w/ headers](#using-dispatchevent-w-headers)
+  * [Event dispatch order](#event-dispatch-order)
+  * [Event validation order/error handling](#dispatch-validation-order)
+* [**Usage**](#usage)
+  * [Keyboard input example]()
+  * [Clock update example]()
+* [**License**](#license)
+  * [ISC]()
 
-With `pseudo-events` you can link events together, create event chains, and create event hierarchies with an intuitive API. No matter how you structure an event system, you always have access to the same features:
+## About
 
-* **Event priority control**
-* **Event dispatch order**
-* **Filtering out event connections**
-* **Event toggling**
-* **Event sequences** *(not available yet)*
-* **User input control (if on client)** *(not available yet)*
-* etc
+With `pseudo-events` you can link events together, use them individually, create event chains, or create event hierarchies with an intuitive API. Whether you're using one event or a tree of events, you will always have access to the core features:
+
+
+  * **Priority manipulation**
+    - Create stronger event connections by defining higher priority level fields
+    - Efficient access to all connections of a given priority level
+  * **Event dispatch order**
+    - Full control over which order events will begin dispatching in.
+    - Selectively enable or disable individual dispatch procedures *(such as event bubbling, dispatching all descendants, etc)*
+  * **Filtering**
+    - Manipulate events by searching for their `name`, `handler`, or `priority` fields.
+    - If no filtering fields are provided, the default behavior is to affect **all** connections with priority level `0`
+  * **Event toggling**
+    - Disable/Enable individual events
+    - Disable/Enable entire event hierarchies
+  * **Event sequences** *(not available yet)*
+  * **User input control (if on client)** *(not available yet)*
+  * etc
 
 
 
 **Important:** *documentation will be outdated until this project leaves early stages of development.*
 
-## Table of Contents
-* [Install](#install)
-* [Creating events](#event-instantiation)
-* [Connecting events](#connecting-events)
-* [Dispatching/firing events](#dispatching-events)
-* [Disconnecting events](#disconnecting-events)
-* [Waiting for events](#waiting-for-event-signals)
-* [Toggling events](#disablingtoggling-events)
-* [Pausing/Resuming events](#pauseresume-events)
-* [Dispatching events w/ headers](#using-dispatchevent-w-headers)
-* [Event dispatch order](#event-dispatch-order)
-* [Event validation order/error handling](#dispatch-validation-order)
-* [License](#license)
+[-> Back to table of contents](#table-of-contents)
 
 ## Install
 
-Simple installation with npm:
+### npm
 ```
 npm i pseudo-events
 ```
+[-> Back to table of contents](#table-of-contents)
 
-## Usage
+## API
 
 Require main library package
 ```js
@@ -58,6 +83,8 @@ const {
 
 More on that later.
 
+[-> Back to table of contents](#table-of-contents)
+
 ### **Event Instantiation**
 
 You can create a new event by using the `Event` constructor
@@ -73,8 +100,21 @@ The `Event` constructor takes two arguments; both are optional. Arguments listed
 * **settings** *&lt;Object>*
   - The settings object contains all additional config data about the event and how it will behave.
 
+**`Event(settings)` constructor example:**
+```js
+const { Event } = require('pseudo-events');
 
-Here is a simple hierarchy of event instances using the `parentEvent` argument in the `Event` constructor:
+const event = new Event({
+  dispatchLimit: 5,
+  cooldown: {
+    interval: 5,
+    duration: 3,
+    reset: 2
+  }
+});
+```
+
+**`Event(parentEvent)` constructor example:**
 
 ```js
 const { Event } = require('pseudo-events');
@@ -102,17 +142,33 @@ Internally, the hierarchy looks something like this:
   
 When an event is fired, only the connections made to that event will dispatch. The signal will not trickle down to descendant events unless it is dispatched using `fireAll` or `dispatchEvent` with headers.
 
+**`Event(parentEvent, settings)` constructor example:**
+```js
+const parent = new Event();
+
+const child = new Event(parent, {
+  dispatchAscendants: true
+});
+```
+
+[-> Back to table of contents](#table-of-contents)
+
 ### **Connecting Events**
 
-You can create a new event connection by calling the `connect` method on the event instance. The connect method takes up to two options; one is optional:
+You can create a new event connection by calling the `connect` method on the event instance. The connect method takes one options argument which can have up to 3 fields:
 
-*Optional arguments are denoted with the '?' symbol next to their name*
+*Optional fields are denoted with the '?' symbol next to their name*
 
-* **name**? *&lt;string>*
-  - Only needed if you intend on disconnecting or filtering events by name later on. If no name is given, the event connection is considered anonymous.
+- **name**? *&lt;string>*
+  * The name of the connection. Only needed if you intend on disconnecting or filtering events by name later on. If no name is given, the event connection is considered anonymous.
 
-- **handler** *&lt;function>*
-  * The handler function that executes when the event is dispatched.
+* **handler** *&lt;function>*
+  - The handler function that executes when the event is dispatched.
+
+- **priority**? *&lt;number>*
+  * The priority number of the connection. If no priority number is given, it defaults to `0`.
+
+
 
 Below are some examples of creating event connections using a variation of arguments:
 
@@ -131,6 +187,8 @@ event.connect({ name: 'someName', handler: eventHandler });
 ```
 
 Events have no limit to how many connections they can have. All connections will be dispatched when the dispatcher methods are called.
+
+[-> Back to table of contents](#table-of-contents)
 
 ### **Dispatching Events**
 
@@ -174,8 +232,9 @@ event.connect({
 event.fire('hello', 'there', 'world!');
 ```
 ##
-    =>  hello there world!
+    =>  event fired with args: hello   there   world!
 
+[-> Back to table of contents](#table-of-contents)
 
 ### **Disconnecting Events**
 
@@ -184,7 +243,7 @@ If you no longer need an event connection then you may disconnect it from the ev
 You can disconnect event connections by *name*, *handler function*, or by the *connection instance* returned from the `connect` method.
 
 
-The `disconnect` method takes up to three options; all of them are optional.
+The `disconnect` method takes one 'options' object as an argument which can contain the following fields:
 
 
 * **name**? *&lt;string>*
@@ -285,6 +344,8 @@ parentEvent.fireAll();
     =>  parent event #1
         child event #2
 
+[-> Back to table of contents](#table-of-contents)
+
 ### **Waiting for Event Signals**
 
 If you want to wait until an event is fired you can use the `wait` method. This function is promise-based, so you can use standard *async/await/thenable* syntax. This method takes one argument; it is optional:
@@ -317,6 +378,7 @@ setTimeout(
 ##
     =>  got back: [1, 'a', false]
 
+[-> Back to table of contents](#table-of-contents)
 ### **Disabling/Toggling Events**
 
 Events can be enabled/disabled temporarily without needing to disconnect them. To do so, you can use the `disable` and `disableAll` methods.
@@ -384,9 +446,42 @@ child.fire() // => child fired
 
 More coming soon.
 
+[-> Back to table of contents](#table-of-contents)
+
 ### **Pause/Resume Events**
 *[ In Development ]*
 
+### **Bound Events**
+You can bind multiple events to a target event without creating a hierarchy when one isn't necessary by using the `boundEvents` option. This event settings allows you to pass an array containing all event instances that should be fired when the target event is fired. 
+
+**Example:**
+
+```js
+const newHandler = msg => () => console.log(msg);
+
+// create events
+const bindOne = new Event();
+const bindTwo = new Event();
+const bindThree = new Event();
+
+// connect events to handlers
+bindOne.connect({ handler: newHandler('bound event one') });
+bindTwo.connect({ handler: newHandler('bound event two') });
+bindThree.connect({ handler: newHandler('bound event three') });
+
+// create a target event that binds 
+const targetEvent = new Event({
+  linkedEvents: [linkedOne, linkedTwo, linkedThree],
+});
+
+targetEvent.fire();
+```
+##
+    =>  bound event one
+        bound event two
+        bound event three
+
+*Note: If an event has no connections then any dispatch method to it will fail with `'NoConnection`' status. However, if you include `ghost: true` in event settings,
 ### **Using dispatchEvent w/ Headers**
 As mentioned before, you can also fire events using the `dispatchEvent` function. This function gives you full customizable control over how an event will be dispatched and what effects it will have.
 
@@ -418,6 +513,8 @@ Here is a list describing the different options you can pass to `dispatchEvent`:
 
 * **headers** *&lt;object>*
   - An list of modified event settings that the event will use for this one-time dispatch. Any setting inside of event settings is a valid header to pass. Here are the common ones:
+
+
     - **dispatchSelf** *&lt;boolean>*
       * Determines whether the handler functions associated with the target event will be dispatched. If `true`, the connections on the target event will fire. If `false`, the connections will not fire but the dispatch will still be registered and the event can still bubble up or trickle down.
     - **dispatchAscendants** *&lt;boolean>*
@@ -426,7 +523,7 @@ Here is a list describing the different options you can pass to `dispatchEvent`:
       * Determines whether or not the event will trickle down and fire all descendant events. If `true`, it will trickle. If `false`, it will not.
       **This option is mutually exclusive with `dispatchAscendants`**
     - **dispatchOrder** *&lt;number[]>*
-      * Determines the order in which the event signals propagate throughout the hierarchy. (See [event dispatch order](#event-dispatch-order)
+      * Determines the order in which the event signals propagate throughout the hierarchy. ([See event dispatch order](#event-dispatch-order))
 
 ### **Event Dispatch Order**
 ...

@@ -4,13 +4,14 @@ const { Event, EventEnums, dispatchEvent } = require('pseudo-events');
 const Errors = require('pseudo-events/dist/error');
 
 const event = new Event();
-const child = new Event(event);
+const child = new Event(event, { requireConnection: false });
 
-child.connect({ handler: () => console.log('child fired') });
+// child.connect({ handler: () => console.log('child fired') });
 
-event.disableAll();
-child.disable();
+child.validateNextDispatch({
+  customValidation: { requireConnection: true },
+  ready: [msg => console.log('ready: ', msg)],
+  rejected: [msg => console.log('rejected: ', msg)]
+});
 
-child.fire();
-
-
+console.log(child.settings.requireConnection);
