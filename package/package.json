@@ -1,6 +1,6 @@
 {
   "name": "pseudo-events",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "A portable API for writing connected event-driven code",
   "main": "src/pseudo-events.js",
   "directories": {
@@ -11,7 +11,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/william-horn/event-maker.git"
+    "url": "git+https://github.com/william-horn/pseudo-events.git"
   },
   "keywords": [
     "event",
@@ -23,9 +23,9 @@
   "author": "William J. Horn",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/william-horn/event-maker/issues"
+    "url": "https://github.com/william-horn/pseudo-events/issues"
   },
-  "homepage": "https://github.com/william-horn/event-maker#readme",
+  "homepage": "https://github.com/william-horn/pseudo-events/tree/npm-deployed/package",
   "dependencies": {
     "uuid": "^9.0.0"
   }

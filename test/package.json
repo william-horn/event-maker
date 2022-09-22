@@ -1,0 +1,11 @@
+{
+  "scripts": {
+    "test": "nodemon test.js"
+  },
+  "dependencies": {
+    "@ncukondo/event-maker": "^1.0.4"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.20"
+  }
+}

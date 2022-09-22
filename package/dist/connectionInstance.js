@@ -1,5 +1,5 @@
 
-const EventEnums = require('./enums');
+const Enums = require('./enums');
 
 const pause = function() {
   this._active = false;
@@ -14,7 +14,7 @@ const isActive = function() {
 }
 
 const Connection = function(options) {
-  this._customType = EventEnums.InstanceType.EventConnection;
+  this._customType = Enums.InstanceType.EventConnection;
   this.priority = options.priority;
   this._active = true;
   this.name = options.name;

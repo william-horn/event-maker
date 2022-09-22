@@ -20,6 +20,7 @@ just "because". On a real note though, this is a pretty neat and efficient imple
 ==================================================================================================================================
 
 todo: create constructor for event sequences (events for sequential event dispatches, like key combinations)
+todo: update some structures & helper functions to using Map in the future
 todo: implement pause/resume mechanic for events
 todo: add error handling and centralize error messages
 
@@ -30,22 +31,22 @@ todo: add error handling and centralize error messages
   Helper functions
 */
 const {
-  modelArgs,
+  schemaArgs,
   objectMeetsCriteria,
 } = require('../lib');
 
 const { v4: uuidv4 } = require('uuid');
-const Connection = require('../dist/connection-instance');
-const EventEnums = require('../dist/enums');
+const Connection = require('../dist/connectionInstance');
+const Enums = require('../dist/enums');
 
 const isConnection = connection => {
   return typeof connection === 'object' 
-    && connection._customType === EventEnums.InstanceType.EventConnection;
+    && connection._customType === Enums.InstanceType.EventConnection;
 }
 
 const isEvent = event => {
   return typeof event === 'object'
-    && event._customType === EventEnums.InstanceType.EventInstance;
+    && event._customType === Enums.InstanceType.EventInstance;
 }
 
 const recurseChildEvents = (event, callback) => {
@@ -143,7 +144,7 @@ const searchEventConnections = (event, options, caseHandler) => {
 }
 
 const onDispatchReady = (dispatchStatus, payload, globalContext) => {
-  const DispatchStatus = EventEnums.DispatchStatus;
+  const DispatchStatus = Enums.DispatchStatus;
 
   const eventBlacklist = globalContext.eventBlacklist;
   const globalHeaders = globalContext.headers;
@@ -190,6 +191,8 @@ const onDispatchReady = (dispatchStatus, payload, globalContext) => {
       resolvers: _resolvers,
       args
     });
+
+    stats.timeLastDispatched = Date.now();
   }
 
   // LINKED DISPATCH TYPE
@@ -339,14 +342,12 @@ const stopPropagating = function() {
   this._propagating = false;
 }
 
-
 const fire = function(...args) {
   dispatchEvent({
     event: this,
     args: [...args]
   });
 }
-
 
 const fireAll = function(...args) {
   dispatchEvent({
@@ -358,6 +359,15 @@ const fireAll = function(...args) {
   });
 }
 
+/*
+  disconnect() // => remove all priority 0 connections
+  disconnect(n) // => remove all priority n connections
+  disconnect({ priority: n, where: { ... }) // => remove all priority n connections with where query
+  disconnect(n, { where: { name: 'something' }});
+
+  disconnect(event.getHighestPriority()) // => disconnect all local connections
+  disconnect('*') // => disconnect all local connections
+*/
 
 const disconnect = function(options) {
   searchEventConnections(this, options, {
@@ -371,7 +381,6 @@ const disconnect = function(options) {
     }
   });
 }
-
 
 const disconnectAll = function(options) {
   recurseChildEvents(this, event => event.disconnect(options));
@@ -393,7 +402,7 @@ const wait = function(timeout) {
 }
 
 const getHighestPriority = function() {
-  const { _connectionPriorityOrder: _cpo } = this;
+  const _cpo = this._connectionPriorityOrder;
   return _cpo[_cpo.length - 1];
 } 
 
@@ -417,25 +426,25 @@ const resume = function() {
 }
 
 const resumeAll = function() {
-
+  
 }
 
 const isDisabledAll = function() {
-  return this._state === EventEnums.StateType.DisabledAll;
+  return this._state === Enums.StateType.DisabledAll;
 }
 
 const isDisabledOne = function() {
-  return this._state === EventEnums.StateType.Disabled;
+  return this._state === Enums.StateType.Disabled;
 }
 
 const isEnabled = function() {
-  return !this._state === EventEnums.StateType.Disabled 
-    && !this._state === EventEnums.StateType.DisabledAll;
+  return !this._state === Enums.StateType.Disabled 
+    && !this._state === Enums.StateType.DisabledAll;
 }
 
 const isDisabled = function() {
-  return this._state === EventEnums.StateType.Disabled 
-    || this._state === EventEnums.StateType.DisabledAll;
+  return this._state === Enums.StateType.Disabled 
+    || this._state === Enums.StateType.DisabledAll;
 }
 
 const getState = function() {
@@ -449,7 +458,7 @@ const disable = function() {
   }
 
   this._prevState = this._state;
-  this._state = EventEnums.StateType.Disabled;
+  this._state = Enums.StateType.Disabled;
 }
 
 const disableAll = function() {
@@ -459,7 +468,7 @@ const disableAll = function() {
   }
 
   this._prevState = this._state;
-  this._state = EventEnums.StateType.DisabledAll;
+  this._state = Enums.StateType.DisabledAll;
   recurseChildEvents(this, event => event._disables++);
 }
 
@@ -538,7 +547,7 @@ const validateNextDispatch = function(caseHandler = {}) {
     Begin case-checking 
   */
 
-  const DispatchStatus = EventEnums.DispatchStatus;
+  const DispatchStatus = Enums.DispatchStatus;
 
   // event has been disabled
   if (this.isDisabled()) {
@@ -603,20 +612,26 @@ const exportSettings = function(extension = {}) {
     dispatchAscendants: settings.dispatchAscendants,
     dispatchSelf: settings.dispatchSelf,
     requiresConnection: settings.requiresConnection,
+    ghost: settings.ghost,
     ...extension
   }
 }
 
 const Event = function(parentEvent, settings) {
-  const DispatchOrder = EventEnums.DispatchOrder;
+  const DispatchOrder = Enums.DispatchOrder;
 
-  [parentEvent, settings] = modelArgs([
-    { rule: [parentEvent, EventEnums.InstanceType.EventInstance] },
-    { rule: [settings, 'object'], default: {} }
-  ]);
+  // [parentEvent, settings] = schemaArgs([
+  //   { rule: [parentEvent, Enums.InstanceType.EventInstance] },
+  //   { rule: [settings, 'object'], default: {} }
+  // ]);
+
+  [parentEvent, settings] = schemaArgs([
+    { type: { [Enums.InstanceType.EventInstance]: true } },
+    { type: { object: true }, else: {} }
+  ], parentEvent, settings);
 
   this._id = uuidv4();
-  this._customType = EventEnums.InstanceType.EventInstance;
+  this._customType = Enums.InstanceType.EventInstance;
   this._parentEvent = parentEvent;
   this._connectionPriorityOrder = [];
   this._connectionPriorities = {};
@@ -626,8 +641,8 @@ const Event = function(parentEvent, settings) {
   this._disables = 0;
 
   this._pausePriority = -1;
-  this._prevState = EventEnums.StateType.Listening;
-  this._state = EventEnums.StateType.Listening; // Listening, Paused, Disabled, DisabledAll
+  this._prevState = Enums.StateType.Listening;
+  this._state = Enums.StateType.Listening; // Listening, Paused, Disabled, DisabledAll
 
   this.stats = {
     timeLastDispatched: 0,
@@ -697,7 +712,7 @@ Event.prototype.exportSettings = exportSettings;
 
 module.exports = {
   Event,
-  EventEnums,
+  Enums,
   isConnection,
   isEvent,
   dispatchEvent,

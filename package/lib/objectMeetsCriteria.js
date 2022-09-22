@@ -10,8 +10,6 @@ documentation coming soon
 
 // ])
 
-const objectHasNoKeys = require('./objectHasNoKeys');
-
 // const objectMeetsCriteria = (object, criteria) => {
 //   for (let i = 0; i < criteria.length; i++) {
 //     const rule = criteria[i];
